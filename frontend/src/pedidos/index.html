@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>LácteoOp · Pedidos</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="pedidos.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>html, body, #root { height: 100%; margin: 0; }</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Icons.jsx"></script>
+  <script type="text/babel" src="Sidebar.jsx"></script>
+  <script type="text/babel" src="TopBar.jsx"></script>
+  <script type="text/babel" src="OrderList.jsx"></script>
+  <script type="text/babel" src="NewOrderForm.jsx"></script>
+  <script type="text/babel" src="ConfirmModal.jsx"></script>
+
+  <script type="text/babel">
+    const INITIAL_ORDERS = [
+      { id: '4823', time: '09:42', client: 'Panadería Doña Rosa',       items: 6,  address: 'Palmira',  amount: '$ 142.500', state: 'recibido' },
+      { id: '4822', time: '09:31', client: 'Tienda Don Pacho',          items: 4,  address: 'Cali',     amount: '$ 86.200',  state: 'recibido' },
+      { id: '4821', time: '09:14', client: 'Tienda La Esquina',         items: 8,  address: 'Palmira',  amount: '$ 248.500', state: 'alistando' },
+      { id: '4820', time: '08:52', client: 'Restaurante El Buen Sabor', items: 12, address: 'Cali',     amount: '$ 412.000', state: 'enruta' },
+      { id: '4819', time: '08:21', client: 'Minimarket Yumbo Centro',   items: 5,  address: 'Yumbo',    amount: '$ 98.700',  state: 'entregado' },
+      { id: '4818', time: '07:55', client: 'Café Los Almendros',        items: 3,  address: 'Cali',     amount: '$ 54.200',  state: 'entregado' },
+      { id: '4817', time: '07:42', client: 'Tienda La Sirena',          items: 7,  address: 'Palmira',  amount: '$ 188.900', state: 'devuelto' },
+    ];
+
+    function App() {
+      const [orders, setOrders]   = React.useState(INITIAL_ORDERS);
+      const [selected, setSelected] = React.useState('4821');
+      const [query, setQuery]     = React.useState('');
+      const [filter, setFilter]   = React.useState('all');
+      const [draft, setDraft]     = React.useState(null);
+      const [toast, setToast]     = React.useState(null);
+
+      const handleConfirm = (d) => setDraft(d);
+      const finalize = () => {
+        const nextId = String(parseInt(orders[0].id) + 2);
+        const time = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+        const newOrder = {
+          id: nextId, time, client: draft.client.name,
+          items: draft.lines.length, address: draft.client.city,
+          amount: '$ ' + draft.total.toLocaleString('es-CO'),
+          state: 'recibido',
+        };
+        setOrders([newOrder, ...orders]);
+        setSelected(nextId);
+        setDraft(null);
+        setToast({ message: 'Pedido confirmado', orderId: nextId });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      return (
+        <div className="app">
+          <Sidebar active="pedidos" />
+          <div className="main">
+            <TopBar title="Pedidos · hoy" lastSync="hace 12 segundos" />
+            <div className="workspace">
+              <OrderListPanel
+                orders={orders}
+                selectedId={selected}
+                onSelect={setSelected}
+                query={query} setQuery={setQuery}
+                filter={filter} setFilter={setFilter}
+              />
+              <NewOrderForm onConfirm={handleConfirm} />
+            </div>
+          </div>
+          <ConfirmModal draft={draft} onCancel={() => setDraft(null)} onConfirm={finalize} />
+          {toast && <Toast message={toast.message} orderId={toast.orderId} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Node (if tooling is added later)
+node_modules/
+.npm
+.pnpm-store/
+dist/
+.cache/
+
+# Vite / Parcel leftovers
+*.local

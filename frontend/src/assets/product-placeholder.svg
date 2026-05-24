@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <rect width="120" height="120" rx="12" fill="#F0EADA"/>
+  <g stroke="#A6AEAA" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 35 h40 a4 4 0 0 1 4 4 v42 a4 4 0 0 1 -4 4 H40 a4 4 0 0 1 -4 -4 V39 a4 4 0 0 1 4 -4 z"/>
+    <path d="M36 48 h48"/>
+    <path d="M50 35 v13"/>
+    <path d="M70 35 v13"/>
+  </g>
+  <text x="60" y="78" text-anchor="middle" font-family="Onest, system-ui, sans-serif" font-size="10" fill="#7E8A85" font-weight="500">Producto</text>
+</svg>

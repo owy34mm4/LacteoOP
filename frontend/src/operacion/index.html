@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>LácteoOp · Operación</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="operacion.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>html, body, #root { height: 100%; margin: 0; }</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="OperacionComponents.jsx"></script>
+
+  <script type="text/babel">
+    const ORDERS = [
+      { id: '4823', time: '09:42', client: 'Panadería Doña Rosa',       city: 'Palmira', state: 'recibido',  amount: '$ 142.500', amountValue: 142500 },
+      { id: '4822', time: '09:31', client: 'Tienda Don Pacho',          city: 'Cali',    state: 'recibido',  amount: '$ 86.200',  amountValue:  86200 },
+      { id: '4821', time: '09:14', client: 'Tienda La Esquina',         city: 'Palmira', state: 'alistando', amount: '$ 248.500', amountValue: 248500 },
+      { id: '4820', time: '08:52', client: 'Restaurante El Buen Sabor', city: 'Cali',    state: 'enruta',    amount: '$ 412.000', amountValue: 412000, driver: 'Carlos M.' },
+      { id: '4819', time: '08:21', client: 'Minimarket Yumbo Centro',   city: 'Yumbo',   state: 'entregado', amount: '$ 98.700',  amountValue:  98700, driver: 'Carlos M.' },
+      { id: '4818', time: '07:55', client: 'Café Los Almendros',        city: 'Cali',    state: 'entregado', amount: '$ 54.200',  amountValue:  54200, driver: 'Carlos M.' },
+      { id: '4817', time: '07:42', client: 'Tienda La Sirena',          city: 'Palmira', state: 'devuelto',  amount: '$ 188.900', amountValue: 188900, driver: 'Andrés P.' },
+    ];
+
+    const DRIVERS = [
+      { name: 'Carlos Muñoz',  initials: 'CM', zone: 'Palmira norte',  done: 8, total: 14 },
+      { name: 'Andrés Patiño', initials: 'AP', zone: 'Cali centro',    done: 5, total: 12 },
+      { name: 'Luisa Quintero',initials: 'LQ', zone: 'Yumbo',          done: 3, total: 10 },
+      { name: 'Diego Salcedo', initials: 'DS', zone: 'Cali sur',       done: 1, total:  9 },
+    ];
+
+    const BAR_DATA = [
+      { label: 'jue', d: 92,  r: 4, p: 2  },
+      { label: 'vie', d: 108, r: 3, p: 1  },
+      { label: 'sáb', d: 134, r: 5, p: 3  },
+      { label: 'lun', d: 96,  r: 2, p: 0  },
+      { label: 'mar', d: 119, r: 6, p: 2  },
+      { label: 'mié', d: 128, r: 4, p: 6  },
+      { label: 'jue', d: 75,  r: 1, p: 42 },
+    ];
+
+    const ALERTS = [
+      { kind: 'danger', title: 'Stock agotado · Queso campesino 500g',  sub: 'Bodega Palmira · 0 unidades disponibles', when: 'hace 3 min' },
+      { kind: 'warn',   title: 'Vence pronto · Yogur natural (lote 4821)', sub: '124 unidades · vence en 3 días',           when: 'hace 14 min' },
+      { kind: 'warn',   title: 'Conductor sin reportar · Diego Salcedo', sub: '52 min desde última actualización',          when: 'hace 52 min' },
+      { kind: 'danger', title: 'Cartera vencida · Tienda La Sirena',    sub: '$ 1.240.000 · vencido hace 18 días',          when: 'hace 1 h' },
+    ];
+
+    function App() {
+      const [range, setRange] = React.useState('today');
+      const [sort, setSort]   = React.useState('time');
+      const [lastRefresh, setLastRefresh] = React.useState('hace 2 min');
+      const handleRefresh = () => setLastRefresh('justo ahora');
+
+      return (
+        <div className="op-app">
+          <OpSidebar />
+          <div className="op-main">
+            <OpTopBar
+              lastRefresh={lastRefresh}
+              autoRefreshOn={true}
+              range={range} onRange={setRange}
+              onRefresh={handleRefresh}
+            />
+            <div className="op-content">
+              <div className="kpi-grid">
+                <KpiCard label="Pedidos hoy"  value="142" deltaLabel="↑ 12 vs ayer"  deltaDir="up"   lastRefresh="hace 2 min" />
+                <KpiCard label="En ruta"      value="28"  deltaLabel="de 6 conductores"               lastRefresh="hace 2 min" />
+                <KpiCard label="Devoluciones" value="3"   deltaLabel="↑ 2 vs ayer"  deltaDir="down"  lastRefresh="hace 2 min" alarm />
+                <KpiCard label="Cartera"      value="$ 8.4M" deltaLabel="12 clientes vencidos"        lastRefresh="hace 2 min" />
+              </div>
+
+              <div className="panel">
+                <div className="panel-head">
+                  <h3>Pedidos por día</h3>
+                  <span className="sub">últimos 7 días</span>
+                  <div className="legend">
+                    <span><span className="legend-swatch" style={{background:'var(--brand)'}}></span>Entregados</span>
+                    <span><span className="legend-swatch" style={{background:'var(--paper-300)'}}></span>En curso</span>
+                    <span><span className="legend-swatch" style={{background:'var(--red-300)'}}></span>Devoluciones</span>
+                  </div>
+                </div>
+                <BarChart data={BAR_DATA} max={150} />
+              </div>
+
+              <div className="dashboard-row">
+                <div className="panel">
+                  <div className="panel-head">
+                    <h3>Pedidos de hoy</h3>
+                    <span className="sub">{ORDERS.length} resultados</span>
+                  </div>
+                  <OrdersTable orders={ORDERS} sort={sort} onSort={setSort} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div className="panel">
+                    <div className="panel-head">
+                      <h3>Conductores en ruta</h3>
+                      <span className="sub">{DRIVERS.length} activos</span>
+                    </div>
+                    <DriversPanel drivers={DRIVERS} />
+                  </div>
+                  <div className="panel">
+                    <div className="panel-head">
+                      <h3>Alertas</h3>
+                      <span className="sub">{ALERTS.length} sin atender</span>
+                    </div>
+                    <AlertsPanel alerts={ALERTS} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
