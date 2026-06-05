@@ -13,47 +13,64 @@
 <body>
   <div id="root"></div>
 
+  <script type="text/babel" src="../shared/domain.js"></script>
+  <script type="text/babel" src="../shared/adapters/http.js"></script>
   <script type="text/babel" src="OperacionComponents.jsx"></script>
 
   <script type="text/babel">
-    const ORDERS = [
-      { id: '4823', time: '09:42', client: 'Panadería Doña Rosa',       city: 'Palmira', state: 'recibido',  amount: '$ 142.500', amountValue: 142500 },
-      { id: '4822', time: '09:31', client: 'Tienda Don Pacho',          city: 'Cali',    state: 'recibido',  amount: '$ 86.200',  amountValue:  86200 },
-      { id: '4821', time: '09:14', client: 'Tienda La Esquina',         city: 'Palmira', state: 'alistando', amount: '$ 248.500', amountValue: 248500 },
-      { id: '4820', time: '08:52', client: 'Restaurante El Buen Sabor', city: 'Cali',    state: 'enruta',    amount: '$ 412.000', amountValue: 412000, driver: 'Carlos M.' },
-      { id: '4819', time: '08:21', client: 'Minimarket Yumbo Centro',   city: 'Yumbo',   state: 'entregado', amount: '$ 98.700',  amountValue:  98700, driver: 'Carlos M.' },
-      { id: '4818', time: '07:55', client: 'Café Los Almendros',        city: 'Cali',    state: 'entregado', amount: '$ 54.200',  amountValue:  54200, driver: 'Carlos M.' },
-      { id: '4817', time: '07:42', client: 'Tienda La Sirena',          city: 'Palmira', state: 'devuelto',  amount: '$ 188.900', amountValue: 188900, driver: 'Andrés P.' },
-    ];
-
-    const DRIVERS = [
-      { name: 'Carlos Muñoz',  initials: 'CM', zone: 'Palmira norte',  done: 8, total: 14 },
-      { name: 'Andrés Patiño', initials: 'AP', zone: 'Cali centro',    done: 5, total: 12 },
-      { name: 'Luisa Quintero',initials: 'LQ', zone: 'Yumbo',          done: 3, total: 10 },
-      { name: 'Diego Salcedo', initials: 'DS', zone: 'Cali sur',       done: 1, total:  9 },
-    ];
-
-    const BAR_DATA = [
-      { label: 'jue', d: 92,  r: 4, p: 2  },
-      { label: 'vie', d: 108, r: 3, p: 1  },
-      { label: 'sáb', d: 134, r: 5, p: 3  },
-      { label: 'lun', d: 96,  r: 2, p: 0  },
-      { label: 'mar', d: 119, r: 6, p: 2  },
-      { label: 'mié', d: 128, r: 4, p: 6  },
-      { label: 'jue', d: 75,  r: 1, p: 42 },
-    ];
-
-    const ALERTS = [
-      { kind: 'danger', title: 'Stock agotado · Queso campesino 500g',  sub: 'Bodega Palmira · 0 unidades disponibles', when: 'hace 3 min' },
-      { kind: 'warn',   title: 'Vence pronto · Yogur natural (lote 4821)', sub: '124 unidades · vence en 3 días',           when: 'hace 14 min' },
-      { kind: 'warn',   title: 'Conductor sin reportar · Diego Salcedo', sub: '52 min desde última actualización',          when: 'hace 52 min' },
-      { kind: 'danger', title: 'Cartera vencida · Tienda La Sirena',    sub: '$ 1.240.000 · vencido hace 18 días',          when: 'hace 1 h' },
-    ];
+    const API_URL = 'http://localhost:8000';
+    const opRepo = LacteoOp.adapters.http.OperacionPort(API_URL);
+    const condRepo = LacteoOp.adapters.http.ConductorPort(API_URL);
 
     function App() {
-      const [range, setRange] = React.useState('today');
-      const [sort, setSort]   = React.useState('time');
-      const [lastRefresh, setLastRefresh] = React.useState('hace 2 min');
+      const [range, setRange]           = React.useState('today');
+      const [sort, setSort]             = React.useState('time');
+      const [loading, setLoading]       = React.useState(true);
+      const [lastRefresh, setLastRefresh] = React.useState('cargando…');
+      const [kpis, setKpis]             = React.useState({});
+      const [orders, setOrders]         = React.useState([]);
+      const [drivers, setDrivers]       = React.useState([]);
+      const [alerts, setAlerts]         = React.useState([]);
+      const [barData, setBarData]       = React.useState([]);
+
+      React.useEffect(() => {
+        const load = async () => {
+          try {
+            const [kpisData, ordersData, driversData, alertsData, graficoData] = await Promise.all([
+              opRepo.obtenerKpis(),
+              opRepo.obtenerPedidos(),
+              opRepo.obtenerConductores(),
+              opRepo.obtenerAlertas(),
+              opRepo.obtenerGrafico(),
+            ]);
+            setKpis(kpisData);
+            setOrders(ordersData.map(o => ({
+              id: o.id, time: o.hora, client: o.cliente_nombre, city: o.ciudad,
+              state: o.estado, amount: '$ ' + (o.monto || 0).toLocaleString('es-CO'),
+              amountValue: o.monto, driver: o.conductor || null
+            })));
+            setDrivers(driversData.map(d => ({
+              name: d.nombre, initials: d.iniciales, zone: d.zona,
+              done: d.paradas_hechas, total: d.total_paradas
+            })));
+            setAlerts(alertsData.map(a => ({
+              kind: a.tipo, title: a.titulo, sub: a.subtitulo, when: a.timestamp
+            })));
+            setBarData(graficoData.map(g => ({
+              label: g.label, d: g.entregados, r: g.devueltos, p: g.pendientes
+            })));
+            setLastRefresh('justo ahora');
+          } catch (e) {
+            setLastRefresh('error al cargar');
+          } finally {
+            setLoading(false);
+          }
+        };
+        load();
+        const interval = setInterval(load, 30000);
+        return () => clearInterval(interval);
+      }, []);
+
       const handleRefresh = () => setLastRefresh('justo ahora');
 
       return (
@@ -68,10 +85,10 @@
             />
             <div className="op-content">
               <div className="kpi-grid">
-                <KpiCard label="Pedidos hoy"  value="142" deltaLabel="↑ 12 vs ayer"  deltaDir="up"   lastRefresh="hace 2 min" />
-                <KpiCard label="En ruta"      value="28"  deltaLabel="de 6 conductores"               lastRefresh="hace 2 min" />
-                <KpiCard label="Devoluciones" value="3"   deltaLabel="↑ 2 vs ayer"  deltaDir="down"  lastRefresh="hace 2 min" alarm />
-                <KpiCard label="Cartera"      value="$ 8.4M" deltaLabel="12 clientes vencidos"        lastRefresh="hace 2 min" />
+                <KpiCard label="Pedidos hoy"  value={String(kpis.pedidos_hoy ?? '—')} deltaLabel="↑ 12 vs ayer"  deltaDir="up"   lastRefresh={lastRefresh} />
+                <KpiCard label="En ruta"      value={String(kpis.en_ruta ?? '—')}     deltaLabel="de 6 conductores"               lastRefresh={lastRefresh} />
+                <KpiCard label="Devoluciones" value={String(kpis.devoluciones ?? '—')} deltaLabel="↑ 2 vs ayer"  deltaDir="down"  lastRefresh={lastRefresh} alarm />
+                <KpiCard label="Cartera"      value={kpis.cartera != null ? '$ ' + kpis.cartera.toLocaleString('es-CO') : '—'} deltaLabel="12 clientes vencidos"        lastRefresh={lastRefresh} />
               </div>
 
               <div className="panel">
@@ -84,31 +101,31 @@
                     <span><span className="legend-swatch" style={{background:'var(--red-300)'}}></span>Devoluciones</span>
                   </div>
                 </div>
-                <BarChart data={BAR_DATA} max={150} />
+                <BarChart data={barData} max={150} />
               </div>
 
               <div className="dashboard-row">
                 <div className="panel">
                   <div className="panel-head">
                     <h3>Pedidos de hoy</h3>
-                    <span className="sub">{ORDERS.length} resultados</span>
+                    <span className="sub">{orders.length} resultados</span>
                   </div>
-                  <OrdersTable orders={ORDERS} sort={sort} onSort={setSort} />
+                  <OrdersTable orders={orders} sort={sort} onSort={setSort} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div className="panel">
                     <div className="panel-head">
                       <h3>Conductores en ruta</h3>
-                      <span className="sub">{DRIVERS.length} activos</span>
+                      <span className="sub">{drivers.length} activos</span>
                     </div>
-                    <DriversPanel drivers={DRIVERS} />
+                    <DriversPanel drivers={drivers} />
                   </div>
                   <div className="panel">
                     <div className="panel-head">
                       <h3>Alertas</h3>
-                      <span className="sub">{ALERTS.length} sin atender</span>
+                      <span className="sub">{alerts.length} sin atender</span>
                     </div>
-                    <AlertsPanel alerts={ALERTS} />
+                    <AlertsPanel alerts={alerts} />
                   </div>
                 </div>
               </div>
