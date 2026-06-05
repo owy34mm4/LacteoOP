@@ -27,36 +27,75 @@
 <body>
   <div id="root"></div>
 
+  <script type="text/babel" src="../shared/domain.js"></script>
+  <script type="text/babel" src="../shared/adapters/http.js"></script>
+  <script type="text/babel" src="../shared/adapters/offline.js"></script>
   <script type="text/babel" src="ios-frame.jsx"></script>
   <script type="text/babel" src="RutaComponents.jsx"></script>
 
   <script type="text/babel">
-    const INITIAL_STOPS = [
-      { num: 1, client: 'Minimarket Yumbo Centro',  addr: 'Yumbo · Calle 5 #3-22',         items: 5,  amount: '$ 98.700',  eta: '10:42', label: 'entregado', status: 'done',    receivedBy: 'María González' },
-      { num: 2, client: 'Café Los Almendros',       addr: 'Cali · Av 6N #28-04',           items: 3,  amount: '$ 54.200',  eta: '11:02', label: 'entregado', status: 'done',    receivedBy: 'Don Jorge' },
-      { num: 3, client: 'Tienda La Esquina',        addr: 'Palmira · Cra 28 #14-12',       items: 8,  amount: '$ 248.500', eta: '11:20', label: 'próxima parada', status: 'active' },
-      { num: 4, client: 'Restaurante El Buen Sabor',addr: 'Cali · Av 6N #28-04',           items: 12, amount: '$ 412.000', eta: '12:05', label: 'pendiente', status: 'pending' },
-      { num: 5, client: 'Panadería Doña Rosa',      addr: 'Palmira · Cra 31 #20-15',       items: 6,  amount: '$ 142.500', eta: '12:40', label: 'pendiente', status: 'pending' },
-      { num: 6, client: 'Tienda Don Pacho',         addr: 'Cali · Calle 70 #5-12',         items: 4,  amount: '$ 86.200',  eta: '13:15', label: 'pendiente', status: 'pending' },
-    ];
+    const API_URL = 'http://localhost:8000';
+    const httpParadaPort = LacteoOp.adapters.http.ParadaPort(API_URL);
+    const httpConductorPort = LacteoOp.adapters.http.ConductorPort(API_URL);
+    const offlineParadaPort = LacteoOp.adapters.offline.ParadaPort(httpParadaPort);
+
+    const mapParadas = (data) => data.map(p => ({
+      id: p.id, num: p.numero, client: p.cliente, addr: p.direccion,
+      items: p.items, amount: '$ ' + (p.monto || 0).toLocaleString('es-CO'),
+      eta: p.eta,
+      label: p.estado === 'done' ? 'entregado' : p.estado === 'active' ? 'próxima parada' : p.estado === 'problem' ? 'problema' : 'pendiente',
+      status: p.estado, receivedBy: p.recibido_por
+    }));
 
     function App() {
-      const [stops, setStops] = React.useState(INITIAL_STOPS);
+      const [stops, setStops]       = React.useState([]);
       const [offline, setOffline]   = React.useState(false);
       const [offSheet, setOffSheet] = React.useState(false);
       const [confirm, setConfirm]   = React.useState(null);
+      const [synced, setSynced]     = React.useState(false);
+
+      const loadStops = () => {
+        offlineParadaPort.listar()
+          .then(data => setStops(mapParadas(data)))
+          .catch(() => {});
+      };
+
+      React.useEffect(() => {
+        loadStops();
+      }, []);
+
+      React.useEffect(() => {
+        if (!offline) {
+          offlineParadaPort.sincronizar()
+            .then(results => {
+              if (results && results.length > 0) {
+                setStops(mapParadas(results));
+                setSynced(true);
+                setTimeout(() => setSynced(false), 3000);
+              } else {
+                loadStops();
+              }
+            })
+            .catch(() => {});
+        }
+      }, [offline]);
 
       const onDeliver = (stop) => setConfirm(stop);
-      const finalize = () => {
-        setStops(stops.map(s => {
-          if (s.num === confirm.num) {
-            return { ...s, status: 'done', label: 'entregado', receivedBy: 'Cliente' };
-          }
-          if (s.status === 'pending' && stops.find(x => x.num === confirm.num)?.num + 1 === s.num) {
-            return { ...s, status: 'active', label: 'próxima parada' };
-          }
-          return s;
-        }));
+      const finalize = async () => {
+        const result = await offlineParadaPort.marcarEntrega(confirm.id, 'Cliente');
+        if (result) {
+          setStops(prev => {
+            const updated = prev.map(s => s.id === confirm.id
+              ? { ...s, status: 'done', label: 'entregado', receivedBy: 'Cliente' }
+              : s);
+            let foundDone = false;
+            return updated.map(s => {
+              if (s.id === confirm.id) { foundDone = true; return s; }
+              if (foundDone && s.status === 'pending') { foundDone = false; return { ...s, status: 'active', label: 'próxima parada' }; }
+              return s;
+            });
+          });
+        }
         setConfirm(null);
       };
 
@@ -70,6 +109,7 @@
             <div className="ruta-app">
               <RouteHeader driverName="Carlos Muñoz" routeStatus={routeStatus} stopsTotal={stops.length} stopsDone={stopsDone} />
               {offline && <OfflineBanner onClick={() => setOffSheet(true)} />}
+              {synced && <div style={{ background: 'var(--green-100)', color: 'var(--green-700)', padding: '8px 16px', fontSize: 13, textAlign: 'center' }}>Sincronizado con el servidor</div>}
               <div className="stops">
                 {stops.map(s => (
                   <StopCard key={s.num} stop={s} onDeliver={onDeliver} onReport={() => {}} />

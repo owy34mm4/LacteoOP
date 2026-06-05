@@ -13,6 +13,8 @@
 <body>
   <div id="root"></div>
 
+  <script type="text/babel" src="../shared/domain.js"></script>
+  <script type="text/babel" src="../shared/adapters/http.js"></script>
   <script type="text/babel" src="Icons.jsx"></script>
   <script type="text/babel" src="Sidebar.jsx"></script>
   <script type="text/babel" src="TopBar.jsx"></script>
@@ -21,38 +23,54 @@
   <script type="text/babel" src="ConfirmModal.jsx"></script>
 
   <script type="text/babel">
-    const INITIAL_ORDERS = [
-      { id: '4823', time: '09:42', client: 'Panadería Doña Rosa',       items: 6,  address: 'Palmira',  amount: '$ 142.500', state: 'recibido' },
-      { id: '4822', time: '09:31', client: 'Tienda Don Pacho',          items: 4,  address: 'Cali',     amount: '$ 86.200',  state: 'recibido' },
-      { id: '4821', time: '09:14', client: 'Tienda La Esquina',         items: 8,  address: 'Palmira',  amount: '$ 248.500', state: 'alistando' },
-      { id: '4820', time: '08:52', client: 'Restaurante El Buen Sabor', items: 12, address: 'Cali',     amount: '$ 412.000', state: 'enruta' },
-      { id: '4819', time: '08:21', client: 'Minimarket Yumbo Centro',   items: 5,  address: 'Yumbo',    amount: '$ 98.700',  state: 'entregado' },
-      { id: '4818', time: '07:55', client: 'Café Los Almendros',        items: 3,  address: 'Cali',     amount: '$ 54.200',  state: 'entregado' },
-      { id: '4817', time: '07:42', client: 'Tienda La Sirena',          items: 7,  address: 'Palmira',  amount: '$ 188.900', state: 'devuelto' },
-    ];
+    const API_URL = 'http://localhost:8000';
+    const pedidoRepo = LacteoOp.adapters.http.PedidoPort(API_URL);
 
     function App() {
-      const [orders, setOrders]   = React.useState(INITIAL_ORDERS);
-      const [selected, setSelected] = React.useState('4821');
-      const [query, setQuery]     = React.useState('');
-      const [filter, setFilter]   = React.useState('all');
-      const [draft, setDraft]     = React.useState(null);
-      const [toast, setToast]     = React.useState(null);
+      const [orders, setOrders]     = React.useState([]);
+      const [loading, setLoading]   = React.useState(true);
+      const [selected, setSelected] = React.useState(null);
+      const [query, setQuery]       = React.useState('');
+      const [filter, setFilter]     = React.useState('all');
+      const [draft, setDraft]       = React.useState(null);
+      const [toast, setToast]       = React.useState(null);
+
+      React.useEffect(() => {
+        pedidoRepo.listar()
+          .then(data => {
+            const mapped = data.map(p => ({
+              id: p.id, time: p.hora, client: p.cliente_nombre,
+              items: p.lineas ? p.lineas.length : (p.items || 0),
+              address: p.ciudad, amount: '$ ' + (p.monto || 0).toLocaleString('es-CO'),
+              state: p.estado
+            }));
+            setOrders(mapped);
+            if (mapped.length > 0) setSelected(mapped[0].id);
+          })
+          .finally(() => setLoading(false));
+      }, []);
 
       const handleConfirm = (d) => setDraft(d);
-      const finalize = () => {
-        const nextId = String(parseInt(orders[0].id) + 2);
-        const time = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      const finalize = async () => {
+        const lineas = draft.lines.map(l => ({
+          producto_sku: l.sku, nombre: l.name, cantidad: l.qty, precio_unitario: l.price
+        }));
+        const result = await pedidoRepo.crear({
+          cliente_nombre: draft.client.name,
+          ciudad: draft.client.city,
+          direccion: draft.client.addr,
+          telefono: draft.phone,
+          lineas
+        });
         const newOrder = {
-          id: nextId, time, client: draft.client.name,
-          items: draft.lines.length, address: draft.client.city,
-          amount: '$ ' + draft.total.toLocaleString('es-CO'),
-          state: 'recibido',
+          id: result.id, time: result.hora, client: result.cliente_nombre,
+          items: result.lineas.length, address: result.ciudad,
+          amount: '$ ' + result.monto.toLocaleString('es-CO'), state: result.estado
         };
         setOrders([newOrder, ...orders]);
-        setSelected(nextId);
+        setSelected(result.id);
         setDraft(null);
-        setToast({ message: 'Pedido confirmado', orderId: nextId });
+        setToast({ message: 'Pedido confirmado', orderId: result.id });
         setTimeout(() => setToast(null), 3500);
       };
 

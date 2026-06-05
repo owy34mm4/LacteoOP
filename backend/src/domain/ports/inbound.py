@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, LineaPedido, Parada, Pedido, Producto
+from domain.value_objects import EstadoPedido
+
+
+class PedidoServicePort(ABC):
+    @abstractmethod
+    async def listar_pedidos(self) -> list[Pedido]: ...
+
+    @abstractmethod
+    async def crear_pedido(
+        self,
+        cliente_nombre: str,
+        ciudad: str,
+        direccion: str,
+        telefono: str,
+        lineas: list[LineaPedido],
+    ) -> Pedido: ...
+
+    @abstractmethod
+    async def actualizar_estado(self, pedido_id: str, estado: EstadoPedido) -> Pedido: ...
+
+    @abstractmethod
+    async def listar_clientes(self) -> list[Cliente]: ...
+
+    @abstractmethod
+    async def listar_productos(self) -> list[Producto]: ...
+
+
+class RutaServicePort(ABC):
+    @abstractmethod
+    async def listar_paradas(self) -> list[Parada]: ...
+
+    @abstractmethod
+    async def listar_conductores(self) -> list[Conductor]: ...
+
+    @abstractmethod
+    async def marcar_entrega(self, parada_id: str, recibido_por: str) -> Parada: ...
+
+    @abstractmethod
+    async def reportar_problema(self, parada_id: str, problema: str) -> Parada: ...
+
+    @abstractmethod
+    async def sincronizar_offline(self, acciones: list[dict]) -> list[Parada]: ...
+
+
+class OperacionServicePort(ABC):
+    @abstractmethod
+    async def obtener_kpis(self) -> dict: ...
+
+    @abstractmethod
+    async def listar_alertas(self) -> list[Alerta]: ...
+
+    @abstractmethod
+    async def obtener_datos_grafico(self) -> list[DatosGrafico]: ...
+
+    @abstractmethod
+    async def listar_pedidos_operacion(self) -> list[Pedido]: ...
+
+    @abstractmethod
+    async def listar_conductores(self) -> list[Conductor]: ...
