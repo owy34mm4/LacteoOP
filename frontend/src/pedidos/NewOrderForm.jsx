@@ -1,26 +1,10 @@
 // NewOrderForm — transcription-optimized order entry with auto-suggest.
 // Designed for dictation: minimal visible fields, big targets, instant client-match feedback.
 
-const KNOWN_CLIENTS = [
-  { id: 'C-128', name: 'Tienda La Esquina',          city: 'Palmira', addr: 'Cra 28 #14-12' },
-  { id: 'C-201', name: 'Restaurante El Buen Sabor',  city: 'Cali',    addr: 'Av 6N #28-04' },
-  { id: 'C-342', name: 'Minimarket Yumbo Centro',    city: 'Yumbo',   addr: 'Calle 5 #3-22' },
-  { id: 'C-415', name: 'Panadería Doña Rosa',        city: 'Palmira', addr: 'Cra 31 #20-15' },
-  { id: 'C-502', name: 'Tienda Don Pacho',           city: 'Cali',    addr: 'Calle 70 #5-12' },
-];
-
-const KNOWN_PRODUCTS = [
-  { sku: 'L-ENT-1L',  name: 'Leche entera 1 L (caja x12)', price: 28800 },
-  { sku: 'L-DES-1L',  name: 'Leche deslactosada 1 L',      price: 32400 },
-  { sku: 'YOG-NAT',   name: 'Yogur natural 1 kg',          price: 14500 },
-  { sku: 'QUE-CAMP',  name: 'Queso campesino 500 g',       price: 18200 },
-  { sku: 'MANT-250',  name: 'Mantequilla 250 g',           price:  9800 },
-];
-
-function ClientField({ value, onChange, onMatch }) {
+function ClientField({ value, onChange, onMatch, knownClients }) {
   const [focused, setFocused] = React.useState(false);
   const matches = value && !value.match
-    ? KNOWN_CLIENTS.filter(c => c.name.toLowerCase().includes(value.toLowerCase()))
+    ? knownClients.filter(c => c.name.toLowerCase().includes(value.toLowerCase()))
     : [];
   const isMatch = value && value.match;
   return (
@@ -70,9 +54,9 @@ function ProductRow({ row, onUpdate, onRemove }) {
   );
 }
 
-function ProductPicker({ onPick, onCancel }) {
+function ProductPicker({ onPick, onCancel, knownProducts }) {
   const [q, setQ] = React.useState('');
-  const matches = KNOWN_PRODUCTS.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
+  const matches = knownProducts.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div style={{ position: 'relative' }}>
       <div className="search" style={{ height: 40 }}>
@@ -96,13 +80,24 @@ function ProductPicker({ onPick, onCancel }) {
 }
 
 function NewOrderForm({ onConfirm }) {
-  const [client, setClient]  = React.useState(null);    // { match: {…} } | string
-  const [phone, setPhone]    = React.useState('+57 312 555 4821');
-  const [lines, setLines]    = React.useState([
-    { sku: 'L-ENT-1L', name: 'Leche entera 1 L (caja x12)', qty: 4, price: 28800 },
-    { sku: 'YOG-NAT',  name: 'Yogur natural 1 kg',          qty: 6, price: 14500 },
-  ]);
+  const [client, setClient]   = React.useState(null);    // { match: {…} } | string
+  const [phone, setPhone]     = React.useState('+57 312 555 4821');
+  const [lines, setLines]     = React.useState([]);
   const [picking, setPicking] = React.useState(false);
+  const [knownClients, setKnownClients]   = React.useState([]);
+  const [knownProducts, setKnownProducts] = React.useState([]);
+
+  React.useEffect(() => {
+    const API_URL = 'http://localhost:8000';
+    const repo = LacteoOp.adapters.http.PedidoPort(API_URL);
+    repo.listarClientes().then(data => {
+      setKnownClients(data.map(c => ({ id: c.id, name: c.nombre, city: c.ciudad, addr: c.direccion })));
+    });
+    repo.listarProductos().then(data => {
+      setKnownProducts(data.map(p => ({ sku: p.sku, name: p.nombre, price: p.precio })));
+    });
+  }, []);
+
   const total = lines.reduce((s, l) => s + l.qty * l.price, 0);
   const canSubmit = client && client.match && lines.length > 0;
 
@@ -115,6 +110,7 @@ function NewOrderForm({ onConfirm }) {
         value={client}
         onChange={v => setClient(v ? { raw: v } : null)}
         onMatch={c => setClient({ match: c })}
+        knownClients={knownClients}
       />
 
       <div className="field">
@@ -135,6 +131,7 @@ function NewOrderForm({ onConfirm }) {
           ))}
           {picking
             ? <ProductPicker
+                knownProducts={knownProducts}
                 onPick={p => { setLines([...lines, { ...p, qty: 1 }]); setPicking(false); }}
                 onCancel={() => setPicking(false)} />
             : <button className="add-line" onClick={() => setPicking(true)}>+ Agregar producto</button>}
