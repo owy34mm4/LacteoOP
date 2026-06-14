@@ -7,3 +7,21 @@ dist/
 
 # Vite / Parcel leftovers
 *.local
+
+# Logs (extra)
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build / cache (extra)
+build/
+.parcel-cache/
+.vite/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+.vitest/
+
+# Lint cache
+.eslintcache

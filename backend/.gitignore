@@ -25,3 +25,26 @@ coverage.xml
 # Type checkers / linters
 .mypy_cache/
 .ruff_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Packaging (extra)
+.eggs/
+*.manifest
+*.spec
+
+# Virtual environments (extra)
+ENV/
+
+# Testing / coverage (extra)
+.coverage.*
+*.cover
+nosetests.xml
+.tox/
+.nox/
+.hypothesis/
+
+# Misc
+cython_debug/

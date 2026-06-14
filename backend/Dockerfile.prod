@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+
+# ---- Builder: install deps + standalone CPython 3.14 with uv ----
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
+
+ENV UV_PYTHON_INSTALL_DIR=/opt/python \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /app
+
+# Standalone, relocatable CPython 3.14 into a known prefix
+RUN uv python install 3.14
+
+# Relocatable venv backed by that interpreter, then install runtime deps
+COPY src/requirements.txt .
+RUN uv venv /opt/venv --python 3.14 --relocatable \
+ && uv pip install --python /opt/venv --no-cache -r requirements.txt
+
+# Application source
+COPY src/ /app/
+
+# ---- Final: distroless runtime (glibc + libstdc++ via cc) ----
+FROM gcr.io/distroless/cc-debian12:nonroot
+
+WORKDIR /app
+
+# Copy interpreter to the SAME path used in builder so the venv resolves it
+COPY --from=builder /opt/python /opt/python
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /app /app
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+# Exec-form entrypoint (distroless has no shell)
+ENTRYPOINT ["/opt/venv/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
