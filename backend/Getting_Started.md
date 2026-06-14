@@ -33,10 +33,26 @@ docker compose up --build backend
 
 ```
 backend/
-├── Dockerfile
-└── src/
-    ├── main.py             ← FastAPI application
-    └── requirements.txt    ← dependencies (fastapi, uvicorn)
+├── Dockerfile              ← dev image (single-stage)
+├── Dockerfile.prod         ← prod image (distroless)
+├── pytest.ini              ← pythonpath=src, asyncio_mode=auto, marker: integration
+├── requirements-dev.txt    ← pytest, pytest-asyncio, httpx
+├── src/
+│   ├── main.py             ← FastAPI app + lifespan wiring
+│   ├── requirements.txt    ← runtime dependencies
+│   ├── seed.py             ← initial data seed (runs at startup)
+│   ├── domain/             ← entities, value objects, ports
+│   ├── application/        ← services (use cases)
+│   └── infrastructure/     ← routers, Mongo adapters, config
+└── test/                   ← mirrors src/ structure
+    ├── conftest.py
+    ├── application/
+    │   └── test_services.py
+    └── infrastructure/
+        └── adapters/
+            └── outbound/
+                └── mongo/
+                    └── test_repositories.py
 ```
 
 ## Dependencies
@@ -45,3 +61,63 @@ Managed by **UV** (`uv pip install --system`). To add a package:
 
 1. Add it to `src/requirements.txt`
 2. Rebuild: `docker compose up --build backend`
+
+---
+
+## Environment variables
+
+The backend reads these at startup (via `src/infrastructure/config/settings.py`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONGO_URL` | `mongodb://localhost:27017` | MongoDB connection string |
+| `MONGO_DB` | `lacteoop` | Database name |
+
+When running via `docker compose up`, these are injected automatically. The backend **depends on the `mongodb` service** — it will not start until the MongoDB healthcheck passes.
+
+---
+
+## Run tests
+
+Install dev dependencies first (one-time):
+
+```bash
+uv venv --python 3.14
+uv pip install -r src/requirements.txt -r requirements-dev.txt
+```
+
+Unit tests only — no MongoDB needed:
+
+```bash
+uv run pytest -m "not integration"
+```
+
+Integration tests — requires a live MongoDB instance:
+
+```bash
+# Start a temporary MongoDB (or reuse the compose one)
+docker run -d --rm -p 27017:27017 mongo:7.0
+
+MONGO_URL=mongodb://localhost:27017 uv run pytest -m integration
+```
+
+All tests (unit + integration):
+
+```bash
+MONGO_URL=mongodb://localhost:27017 uv run pytest
+```
+
+Unit tests use in-memory fake repositories — no database is needed. Integration tests are marked `@pytest.mark.integration` and hit real MongoDB.
+
+---
+
+## Build the production image (distroless)
+
+```bash
+# From the project root
+docker build -f backend/Dockerfile.prod -t lacteoop-backend:prod backend
+```
+
+The prod image is multi-stage: compiles a Python 3.14 standalone binary and copies it into `gcr.io/distroless/cc-debian12`. No shell or package manager at runtime.
+
+> The `develop` branch ships `Dockerfile` (single-stage). The `main` branch ships `Dockerfile.prod` (distroless). See root `Getting_Started.md` for CI/CD details.

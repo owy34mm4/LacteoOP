@@ -24,7 +24,10 @@ Este repositorio contiene el prototipo funcional resultado del proceso de diseñ
 | Servidor frontend | nginx:alpine |
 | Backend | FastAPI · Python 3.14 |
 | Gestor de paquetes | UV (`ghcr.io/astral-sh/uv:python3.14-trixie-slim`) |
+| Base de datos | MongoDB 7.0 (`beanie` + `pymongo.AsyncMongoClient`) |
 | Orquestación | Docker Compose |
+| Tests backend | pytest · pytest-asyncio |
+| Tests frontend | Vitest · jsdom |
 
 ---
 
@@ -51,20 +54,89 @@ docker compose up --build
 .
 ├── docker-compose.yml
 ├── Getting_Started.md
+├── .github/
+│   └── workflows/              ← CI/CD (feature / develop / main)
 ├── backend/
-│   ├── Dockerfile
+│   ├── Dockerfile              ← imagen dev (single-stage)
+│   ├── Dockerfile.prod         ← imagen prod (distroless)
+│   ├── pytest.ini
+│   ├── requirements-dev.txt
 │   ├── Getting_Started.md
-│   └── src/
-│       ├── main.py
-│       └── requirements.txt
+│   ├── src/
+│   │   ├── main.py
+│   │   ├── requirements.txt
+│   │   ├── seed.py
+│   │   ├── domain/
+│   │   ├── application/
+│   │   └── infrastructure/
+│   └── test/                   ← espeja src/
 └── frontend/
     ├── Dockerfile
+    ├── package.json            ← vitest (solo dev)
+    ├── vitest.config.js
     ├── Getting_Started.md
-    └── src/
-        ├── index.html
-        ├── colors_and_type.css
-        ├── assets/
-        ├── pedidos/
-        ├── ruta/
-        └── operacion/
+    ├── src/
+    │   ├── index.html
+    │   ├── colors_and_type.css
+    │   ├── assets/
+    │   ├── shared/             ← núcleo hexagonal
+    │   ├── pedidos/
+    │   ├── ruta/
+    │   └── operacion/
+    └── test/                   ← espeja src/shared/
 ```
+
+---
+
+## Tests / Calidad
+
+Ambas capas tienen tests automáticos que son **puerta de entrada a PRs** (`feature.yml` los ejecuta en cada PR hacia `main` o `develop`).
+
+| Capa | Runner | Cobertura | Comando |
+|------|--------|-----------|---------|
+| Backend | pytest (asyncio) | Unitarios con repos fake + integración con Mongo | `cd backend && uv run pytest` |
+| Frontend | Vitest + jsdom | Núcleo `src/shared/` (domain + adapters) | `cd frontend && npm test` |
+
+Los tests de integración del backend requieren MongoDB y se marcan con `@pytest.mark.integration`.  
+Los tests del frontend son solo de desarrollo — la imagen nginx no los incluye.
+
+---
+
+## CI/CD + DockerHub
+
+| Workflow | Disparador | Acción |
+|----------|-----------|--------|
+| `feature.yml` | push `feature/**`, PR a `main`/`develop` | Tests + build imagen prod (puerta de PR) |
+| `develop.yml` | push `develop` | Tests + push imagen single-stage a DockerHub |
+| `main.yml` | push `main`, tag `v*.*.*` | Tests + push imagen distroless a DockerHub |
+
+Imágenes publicadas: `lacteoop-backend` · `lacteoop-frontend`
+
+Tags: `main` → `latest`/`main`/`sha-xxx` · tag semver `vX.Y.Z` → versión semántica · `develop` → `develop`/`sha-xxx`
+
+Secrets requeridos: `DOCKERHUB_USERNAME` · `DOCKERHUB_TOKEN`
+
+---
+
+## Modelo de ramas (gitflow)
+
+```
+feature/**  →  PR  →  develop  →  PR  →  main
+```
+
+- `main` y `develop` son ramas protegidas — sin push directo.
+- Commits en formato convencional: `feat:`, `fix:`, `chore:`, `test:`, `docs:`, etc.
+- `feature.yml` corre tests y construye la imagen prod en cada PR (puerta obligatoria).
+
+---
+
+## MongoDB
+
+El servicio `mongodb` corre en el compose local (puerto 27017, imagen `mongo:7.0` con healthcheck). El backend depende de él y no arranca hasta que el healthcheck pasa.
+
+Variables de entorno leídas por el backend:
+
+| Variable | Valor por defecto |
+|----------|------------------|
+| `MONGO_URL` | `mongodb://localhost:27017` |
+| `MONGO_DB` | `lacteoop` |
