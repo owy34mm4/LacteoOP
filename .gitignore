@@ -21,3 +21,30 @@ docker-compose.override.yml
 # Logs
 *.log
 logs/
+
+# OS (extra)
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Editors / IDEs (extra)
+.vs/
+*~
+*.sublime-workspace
+*.code-workspace
+
+# Secrets / keys (extra)
+*.pem
+*.key
+*.p12
+
+# Temp / merge / cache
+*.tmp
+*.bak
+*.orig
+tmp/
+.cache/
