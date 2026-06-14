@@ -52,16 +52,19 @@ ALL_DOCUMENT_MODELS = [
 ]
 
 
-@pytest.fixture(scope="module")
+# Function-scoped: pytest-asyncio runs async fixtures on a function-scoped event loop
+# (asyncio_default_fixture_loop_scope = function in pytest.ini). A module-scoped async
+# fixture here triggers ScopeMismatch, so each test gets a fresh client/DB.
+@pytest.fixture
 async def mongo_db():
-    """Create a test database connection and drop it after all tests in this module."""
+    """Create a test database connection and drop it after the test."""
     client = AsyncMongoClient(MONGO_URL)
     db = client[TEST_DB]
     await init_beanie(database=db, document_models=ALL_DOCUMENT_MODELS)
     yield db
     # Cleanup: drop the test database
     await client.drop_database(TEST_DB)
-    client.close()
+    await client.close()
 
 
 @pytest.fixture(autouse=True)
