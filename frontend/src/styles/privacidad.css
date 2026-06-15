@@ -1,0 +1,80 @@
+/* Privacidad — Ley 1581 compliance views */
+
+.priv-tabs { margin-bottom: 4px; }
+
+/* Privacy banner (full-width, first-login style) */
+.priv-banner {
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 20px 24px;
+  display: grid; grid-template-columns: 48px 1fr auto; gap: 18px; align-items: center;
+  box-shadow: var(--shadow-low);
+}
+.priv-banner .icon-circle {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--brand-tint); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+}
+.priv-banner .title { font-size: 16px; font-weight: 700; color: var(--fg-1); }
+.priv-banner .body  { font-size: 13px; color: var(--fg-2); margin-top: 4px; line-height: 1.5; }
+.priv-banner .legal { font-size: 11px; color: var(--fg-3); font-family: var(--font-mono); margin-top: 6px; }
+
+/* Consent table */
+.consent-row {
+  display: grid; grid-template-columns: 1fr 120px 140px auto; gap: 16px; align-items: center;
+  padding: 14px 0; border-bottom: 1px solid var(--border-1);
+}
+.consent-row:last-child { border-bottom: none; }
+.consent-row .name { font-size: 14px; font-weight: 600; color: var(--fg-1); }
+.consent-row .sub  { font-size: 12px; color: var(--fg-3); margin-top: 2px; }
+.consent-row .date { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); }
+
+/* Deletion request card */
+.del-card {
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 20px;
+  box-shadow: var(--shadow-low);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.del-card h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.del-card .sub { font-size: 13px; color: var(--fg-2); line-height: 1.5; }
+
+/* Audit log */
+.audit-row {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border-1);
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.audit-dot.view   { background: var(--sky-50);   color: var(--sky-700); }
+.audit-dot.edit   { background: var(--amber-50); color: var(--amber-700); }
+.audit-dot.delete { background: var(--red-50);   color: var(--red-700); }
+.audit-dot.export { background: var(--green-50); color: var(--green-700); }
+.audit-row .title { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+.audit-row .sub   { font-size: 12px; color: var(--fg-3); }
+.audit-row .time  { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); white-space: nowrap; }
+
+/* Consent status badge (scoped to privacidad surface) */
+.priv-consent-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 600;
+}
+.priv-consent-badge.ok      { background: var(--green-50); color: var(--green-700); }
+.priv-consent-badge.pending { background: var(--amber-50); color: var(--amber-700); }
+.priv-consent-badge.revoked { background: var(--red-50);   color: var(--red-700); }
+
+/* Policy viewer */
+.policy-viewer {
+  background: var(--surface-2); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 24px 28px;
+  max-height: 340px; overflow-y: auto;
+  font-size: 14px; color: var(--fg-2); line-height: 1.7;
+}
+.policy-viewer h4 { color: var(--fg-1); font-size: 15px; margin: 16px 0 8px; }
+.policy-viewer h4:first-child { margin-top: 0; }
+.policy-viewer ul { padding-left: 18px; }
+.policy-viewer li { padding: 2px 0; }

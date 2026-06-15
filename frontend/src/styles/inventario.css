@@ -1,0 +1,60 @@
+/* Inventario — stock table, alerts, sync */
+
+.inv-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.inv-stat {
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+  box-shadow: var(--shadow-low);
+}
+.inv-stat .label { font-size: 11px; color: var(--fg-3); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.inv-stat .value { font-size: 28px; font-weight: 700; color: var(--fg-1); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.inv-stat.alarm .value { color: var(--red-700); }
+.inv-stat.warn  .value { color: var(--amber-700); }
+
+.inv-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.inv-toolbar .lo-search { flex: 1; min-width: 240px; }
+
+/* Stock level bar inside table */
+.stock-bar { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.stock-bar .track { flex: 1; height: 6px; background: var(--paper-200); border-radius: 999px; overflow: hidden; }
+.stock-bar .fill { height: 100%; border-radius: 999px; }
+.stock-bar .pct { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); width: 32px; text-align: right; }
+
+/* Expiry chip */
+.expiry-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-size: 10px; font-weight: 700;
+}
+.expiry-chip.ok   { background: var(--green-50); color: var(--green-700); }
+.expiry-chip.warn { background: var(--amber-50); color: var(--amber-700); }
+.expiry-chip.crit { background: var(--red-50);   color: var(--red-700); }
+
+/* Product detail side panel */
+.inv-detail {
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 20px;
+  box-shadow: var(--shadow-low);
+  display: flex; flex-direction: column; gap: 16px;
+  min-width: 320px;
+}
+.inv-detail h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.inv-detail .sku { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); }
+.inv-detail .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border-1); }
+.inv-detail .row:last-child { border-bottom: none; }
+.inv-detail .row .l { font-size: 13px; color: var(--fg-3); }
+.inv-detail .row .r { font-size: 13px; font-weight: 600; color: var(--fg-1); font-family: var(--font-mono); }
+
+.inv-workspace { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+@media (max-width: 1200px) { .inv-workspace { grid-template-columns: 1fr; } }
+
+/* Movement log */
+.movement { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-1); align-items: flex-start; }
+.movement:last-child { border-bottom: none; }
+.movement .icon-wrap { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.movement .icon-wrap.in  { background: var(--green-50); color: var(--green-700); }
+.movement .icon-wrap.out { background: var(--red-50);   color: var(--red-700); }
+.movement .title { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+.movement .sub   { font-size: 12px; color: var(--fg-3); }
+.movement .time  { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-left: auto; white-space: nowrap; }
