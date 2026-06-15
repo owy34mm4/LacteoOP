@@ -6,6 +6,23 @@ from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, LineaPedid
 from domain.value_objects import EstadoPedido
 
 
+class ClienteServicePort(ABC):
+    @abstractmethod
+    async def listar(self) -> list[Cliente]: ...
+
+    @abstractmethod
+    async def obtener(self, id: str) -> Cliente: ...
+
+    @abstractmethod
+    async def crear(self, nombre: str, ciudad: str, direccion: str, telefono: str) -> Cliente: ...
+
+    @abstractmethod
+    async def actualizar(self, id: str, **campos) -> Cliente: ...
+
+    @abstractmethod
+    async def eliminar(self, id: str) -> None: ...
+
+
 class PedidoServicePort(ABC):
     @abstractmethod
     async def listar_pedidos(self) -> list[Pedido]: ...

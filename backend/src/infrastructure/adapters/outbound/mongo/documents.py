@@ -75,6 +75,7 @@ class ClienteDocument(Document):
     nombre: str
     ciudad: str
     direccion: str
+    telefono: str = ""
 
     class Settings:
         name = "clientes"

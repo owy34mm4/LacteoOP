@@ -32,7 +32,7 @@ from domain.ports.outbound import (
     ProductoRepository,
 )
 from domain.value_objects import EstadoParada, EstadoPedido, TipoAlerta
-from application.services import OperacionService, PedidoService, RutaService
+from application.services import ClienteService, OperacionService, PedidoService, RutaService
 
 
 # ---------------------------------------------------------------------------
@@ -146,14 +146,32 @@ class FakeAlertaRepository(AlertaRepository):
 
 class FakeClienteRepository(ClienteRepository):
     def __init__(self, clientes: list[Cliente] | None = None) -> None:
-        self._store: list[Cliente] = list(clientes or [])
+        self._store: dict[str, Cliente] = {}
+        for c in (clientes or []):
+            self._store[c.id] = copy.deepcopy(c)
 
     async def find_all(self) -> list[Cliente]:
-        return list(self._store)
+        return list(self._store.values())
+
+    async def find_by_id(self, id: str) -> Cliente | None:
+        return copy.deepcopy(self._store.get(id))
 
     async def save(self, cliente: Cliente) -> Cliente:
-        self._store.append(copy.deepcopy(cliente))
-        return copy.deepcopy(cliente)
+        saved = copy.deepcopy(cliente)
+        self._store[saved.id] = saved
+        return copy.deepcopy(saved)
+
+    async def update(self, cliente: Cliente) -> Cliente:
+        if cliente.id not in self._store:
+            raise ValueError(f"Cliente {cliente.id} not found")
+        updated = copy.deepcopy(cliente)
+        self._store[updated.id] = updated
+        return copy.deepcopy(updated)
+
+    async def delete(self, id: str) -> None:
+        if id not in self._store:
+            raise ValueError(f"Cliente {id} not found")
+        del self._store[id]
 
     async def count(self) -> int:
         return len(self._store)
@@ -250,9 +268,15 @@ def pedido_repo() -> FakePedidoRepository:
 def cliente_repo() -> FakeClienteRepository:
     return FakeClienteRepository(
         clientes=[
-            Cliente(id="cl1", nombre="Maria Garcia", ciudad="Rosario", direccion="Av. Corrientes 100"),
+            Cliente(id="C-100", nombre="Maria Garcia", ciudad="Rosario", direccion="Av. Corrientes 100", telefono="+57 310 000 0001"),
+            Cliente(id="C-101", nombre="Juan Perez",   ciudad="Cali",    direccion="Calle 5 #10-20",      telefono="+57 311 000 0002"),
         ]
     )
+
+
+@pytest.fixture
+def cliente_service(cliente_repo: FakeClienteRepository) -> ClienteService:
+    return ClienteService(cliente_repo)
 
 
 @pytest.fixture

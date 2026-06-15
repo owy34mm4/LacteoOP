@@ -12,6 +12,7 @@ class Cliente:
     nombre: str
     ciudad: str
     direccion: str
+    telefono: str = ""
 
 
 @dataclass

@@ -36,7 +36,8 @@ from infrastructure.adapters.outbound.mongo.documents import (  # noqa: E402
     PedidoDocument,
     ProductoDocument,
 )
-from infrastructure.adapters.outbound.mongo.repositories import MongoPedidoRepository  # noqa: E402
+from domain.entities import Cliente  # noqa: E402
+from infrastructure.adapters.outbound.mongo.repositories import MongoClienteRepository, MongoPedidoRepository  # noqa: E402
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 TEST_DB = "lacteoop_test"
@@ -142,4 +143,84 @@ async def test_count_reflects_saved_documents(mongo_db):
 
     await repo.save(make_test_pedido("INT-C1"))
     await repo.save(make_test_pedido("INT-C2"))
+    assert await repo.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# MongoClienteRepository integration tests
+# ---------------------------------------------------------------------------
+
+def make_test_cliente(id: str = "C-INT-001") -> Cliente:
+    return Cliente(
+        id=id,
+        nombre="Tienda Integración",
+        ciudad="Cali",
+        direccion="Cra 5 #10-20",
+        telefono="+57 300 111 2222",
+    )
+
+
+@pytest.mark.integration
+async def test_cliente_save_and_find_by_id(mongo_db):
+    """save→find_by_id round-trip preserves all fields including telefono."""
+    repo = MongoClienteRepository()
+    cliente = make_test_cliente("C-INT-001")
+
+    saved = await repo.save(cliente)
+    assert saved.id == "C-INT-001"
+    assert saved.telefono == "+57 300 111 2222"
+
+    found = await repo.find_by_id("C-INT-001")
+    assert found is not None
+    assert found.nombre == "Tienda Integración"
+    assert found.ciudad == "Cali"
+    assert found.telefono == "+57 300 111 2222"
+
+
+@pytest.mark.integration
+async def test_cliente_find_by_id_returns_none_for_missing(mongo_db):
+    """find_by_id on a non-existent id returns None."""
+    repo = MongoClienteRepository()
+    result = await repo.find_by_id("C-DOES-NOT-EXIST")
+    assert result is None
+
+
+@pytest.mark.integration
+async def test_cliente_update(mongo_db):
+    """update persists field changes."""
+    repo = MongoClienteRepository()
+    await repo.save(make_test_cliente("C-INT-002"))
+
+    found = await repo.find_by_id("C-INT-002")
+    assert found is not None
+    import dataclasses
+    updated_entity = dataclasses.replace(found, nombre="Tienda Actualizada", telefono="+57 320 999 8888")
+    updated = await repo.update(updated_entity)
+    assert updated.nombre == "Tienda Actualizada"
+    assert updated.telefono == "+57 320 999 8888"
+
+    refetched = await repo.find_by_id("C-INT-002")
+    assert refetched is not None
+    assert refetched.nombre == "Tienda Actualizada"
+
+
+@pytest.mark.integration
+async def test_cliente_delete(mongo_db):
+    """delete removes the document; subsequent find_by_id returns None."""
+    repo = MongoClienteRepository()
+    await repo.save(make_test_cliente("C-INT-003"))
+
+    assert await repo.find_by_id("C-INT-003") is not None
+    await repo.delete("C-INT-003")
+    assert await repo.find_by_id("C-INT-003") is None
+
+
+@pytest.mark.integration
+async def test_cliente_count(mongo_db):
+    """count reflects the number of saved documents."""
+    repo = MongoClienteRepository()
+    assert await repo.count() == 0
+
+    await repo.save(make_test_cliente("C-CNT-1"))
+    await repo.save(make_test_cliente("C-CNT-2"))
     assert await repo.count() == 2

@@ -150,10 +150,31 @@ class MongoClienteRepository(ClienteRepository):
         docs = await ClienteDocument.find_all().to_list()
         return [ClienteMapper.to_entity(d) for d in docs]
 
+    async def find_by_id(self, id: str) -> Cliente | None:
+        doc = await ClienteDocument.find_one(ClienteDocument.cliente_id == id)
+        return ClienteMapper.to_entity(doc) if doc else None
+
     async def save(self, cliente: Cliente) -> Cliente:
         doc = ClienteMapper.to_document(cliente)
         await doc.insert()
         return ClienteMapper.to_entity(doc)
+
+    async def update(self, cliente: Cliente) -> Cliente:
+        doc = await ClienteDocument.find_one(ClienteDocument.cliente_id == cliente.id)
+        if doc is None:
+            raise ValueError(f"Cliente {cliente.id} not found")
+        doc.nombre = cliente.nombre
+        doc.ciudad = cliente.ciudad
+        doc.direccion = cliente.direccion
+        doc.telefono = cliente.telefono
+        await doc.save()
+        return ClienteMapper.to_entity(doc)
+
+    async def delete(self, id: str) -> None:
+        doc = await ClienteDocument.find_one(ClienteDocument.cliente_id == id)
+        if doc is None:
+            raise ValueError(f"Cliente {id} not found")
+        await doc.delete()
 
     async def count(self) -> int:
         return await ClienteDocument.count()

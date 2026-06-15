@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from application.services import OperacionService, PedidoService, RutaService
+from application.services import ClienteService, OperacionService, PedidoService, RutaService
+from infrastructure.adapters.inbound.cliente_router import create_cliente_router
 from infrastructure.adapters.inbound.operacion_router import create_operacion_router
 from infrastructure.adapters.inbound.pedido_router import create_pedido_router
 from infrastructure.adapters.inbound.ruta_router import create_ruta_router
@@ -42,11 +43,13 @@ async def lifespan(app: FastAPI):
     pedido_svc = PedidoService(pedido_repo, cliente_repo, producto_repo)
     ruta_svc = RutaService(parada_repo, conductor_repo)
     operacion_svc = OperacionService(pedido_repo, conductor_repo, alerta_repo, grafico_repo)
+    cliente_svc = ClienteService(cliente_repo)
 
     # Inbound adapters
     app.include_router(create_pedido_router(pedido_svc))
     app.include_router(create_ruta_router(ruta_svc))
     app.include_router(create_operacion_router(operacion_svc))
+    app.include_router(create_cliente_router(cliente_svc))
 
     # Seed initial data if collections are empty
     await seed_if_empty(

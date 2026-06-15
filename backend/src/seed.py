@@ -253,11 +253,11 @@ _GRAFICO = [
 
 # ---- Seed data matching frontend KNOWN_CLIENTS ----
 _CLIENTES = [
-    Cliente(id="C-128", nombre="Tienda La Esquina",         ciudad="Palmira", direccion="Cra 28 #14-12"),
-    Cliente(id="C-201", nombre="Restaurante El Buen Sabor", ciudad="Cali",    direccion="Av 6N #28-04"),
-    Cliente(id="C-342", nombre="Minimarket Yumbo Centro",   ciudad="Yumbo",   direccion="Calle 5 #3-22"),
-    Cliente(id="C-415", nombre="Panadería Doña Rosa",       ciudad="Palmira", direccion="Cra 31 #20-15"),
-    Cliente(id="C-502", nombre="Tienda Don Pacho",          ciudad="Cali",    direccion="Calle 70 #5-12"),
+    Cliente(id="C-128", nombre="Tienda La Esquina",         ciudad="Palmira", direccion="Cra 28 #14-12",  telefono="+57 312 000 0001"),
+    Cliente(id="C-201", nombre="Restaurante El Buen Sabor", ciudad="Cali",    direccion="Av 6N #28-04",   telefono="+57 315 000 0002"),
+    Cliente(id="C-342", nombre="Minimarket Yumbo Centro",   ciudad="Yumbo",   direccion="Calle 5 #3-22",  telefono="+57 320 000 0003"),
+    Cliente(id="C-415", nombre="Panadería Doña Rosa",       ciudad="Palmira", direccion="Cra 31 #20-15",  telefono="+57 321 000 0004"),
+    Cliente(id="C-502", nombre="Tienda Don Pacho",          ciudad="Cali",    direccion="Calle 70 #5-12", telefono="+57 300 000 0005"),
 ]
 
 # ---- Seed data matching frontend KNOWN_PRODUCTS ----

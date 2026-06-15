@@ -11,6 +11,7 @@ import pytest
 from domain.entities import LineaPedido
 from domain.value_objects import EstadoParada, EstadoPedido
 from test.conftest import (
+    FakeClienteRepository,
     FakeConductorRepository,
     FakePedidoRepository,
     FakeParadaRepository,
@@ -18,7 +19,8 @@ from test.conftest import (
     make_parada,
     make_pedido,
 )
-from application.services import OperacionService, PedidoService, RutaService
+from application.services import ClienteService, OperacionService, PedidoService, RutaService
+from domain.entities import Cliente
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +213,69 @@ class TestSincronizarOffline:
 # ---------------------------------------------------------------------------
 # OperacionService
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# ClienteService
+# ---------------------------------------------------------------------------
+
+class TestClienteServiceCrear:
+    async def test_id_derivado_de_count(self) -> None:
+        """Empty repo (count 0) → id = C-700."""
+        repo = FakeClienteRepository()
+        svc = ClienteService(repo)
+        cliente = await svc.crear("Tienda X", "Cali", "Cra 1", "+57 300 000 0000")
+        assert cliente.id == "C-700"
+
+    async def test_id_derivado_de_count_no_vacio(self, cliente_service: ClienteService) -> None:
+        """Fixture repo has 2 clientes (count 2) → id = C-702."""
+        cliente = await cliente_service.crear("Tienda Y", "Bogota", "Calle 10", "+57 301 000 0000")
+        assert cliente.id == "C-702"
+
+    async def test_persiste_en_repo(self, cliente_service: ClienteService, cliente_repo: FakeClienteRepository) -> None:
+        initial = await cliente_repo.count()
+        await cliente_service.crear("Tienda Z", "Medellin", "Av 80", "+57 302 000 0000")
+        assert await cliente_repo.count() == initial + 1
+
+    async def test_telefono_guardado(self, cliente_service: ClienteService) -> None:
+        cliente = await cliente_service.crear("Tienda W", "Cali", "Cra 5", "+57 315 111 2222")
+        assert cliente.telefono == "+57 315 111 2222"
+
+
+class TestClienteServiceObtener:
+    async def test_obtener_existente(self, cliente_service: ClienteService) -> None:
+        cliente = await cliente_service.obtener("C-100")
+        assert cliente.nombre == "Maria Garcia"
+
+    async def test_obtener_no_encontrado_raises(self, cliente_service: ClienteService) -> None:
+        with pytest.raises(ValueError, match="NOPE"):
+            await cliente_service.obtener("NOPE")
+
+
+class TestClienteServiceActualizar:
+    async def test_actualiza_nombre(self, cliente_service: ClienteService) -> None:
+        cliente = await cliente_service.actualizar("C-100", nombre="Nuevo Nombre")
+        assert cliente.nombre == "Nuevo Nombre"
+
+    async def test_preserva_campos_no_actualizados(self, cliente_service: ClienteService) -> None:
+        cliente = await cliente_service.actualizar("C-100", ciudad="Palmira")
+        assert cliente.nombre == "Maria Garcia"
+        assert cliente.ciudad == "Palmira"
+
+    async def test_actualizar_no_encontrado_raises(self, cliente_service: ClienteService) -> None:
+        with pytest.raises(ValueError, match="NOPE"):
+            await cliente_service.actualizar("NOPE", nombre="X")
+
+
+class TestClienteServiceEliminar:
+    async def test_eliminar_existente(self, cliente_service: ClienteService, cliente_repo: FakeClienteRepository) -> None:
+        initial = await cliente_repo.count()
+        await cliente_service.eliminar("C-100")
+        assert await cliente_repo.count() == initial - 1
+
+    async def test_eliminar_no_encontrado_raises(self, cliente_service: ClienteService) -> None:
+        with pytest.raises(ValueError, match="NOPE"):
+            await cliente_service.eliminar("NOPE")
+
 
 class TestObtenerKpis:
     async def test_pedidos_hoy_es_count_total(self, operacion_service: OperacionService) -> None:

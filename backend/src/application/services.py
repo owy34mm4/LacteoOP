@@ -4,7 +4,7 @@ import dataclasses
 from datetime import datetime
 
 from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, LineaPedido, Parada, Pedido, Producto
-from domain.ports.inbound import OperacionServicePort, PedidoServicePort, RutaServicePort
+from domain.ports.inbound import ClienteServicePort, OperacionServicePort, PedidoServicePort, RutaServicePort
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
@@ -190,3 +190,42 @@ class OperacionService(OperacionServicePort):
 
     async def listar_conductores(self) -> list[Conductor]:
         return await self._conductor_repo.find_all()
+
+
+class ClienteService(ClienteServicePort):
+    def __init__(self, cliente_repo: ClienteRepository) -> None:
+        self._cliente_repo = cliente_repo
+
+    async def listar(self) -> list[Cliente]:
+        return await self._cliente_repo.find_all()
+
+    async def obtener(self, id: str) -> Cliente:
+        cliente = await self._cliente_repo.find_by_id(id)
+        if not cliente:
+            raise ValueError(f"Cliente {id} not found")
+        return cliente
+
+    async def crear(self, nombre: str, ciudad: str, direccion: str, telefono: str) -> Cliente:
+        count = await self._cliente_repo.count()
+        next_id = f"C-{count + 700}"
+        cliente = Cliente(
+            id=next_id,
+            nombre=nombre,
+            ciudad=ciudad,
+            direccion=direccion,
+            telefono=telefono,
+        )
+        return await self._cliente_repo.save(cliente)
+
+    async def actualizar(self, id: str, **campos) -> Cliente:
+        cliente = await self._cliente_repo.find_by_id(id)
+        if not cliente:
+            raise ValueError(f"Cliente {id} not found")
+        cliente = dataclasses.replace(cliente, **campos)
+        return await self._cliente_repo.update(cliente)
+
+    async def eliminar(self, id: str) -> None:
+        cliente = await self._cliente_repo.find_by_id(id)
+        if not cliente:
+            raise ValueError(f"Cliente {id} not found")
+        await self._cliente_repo.delete(id)

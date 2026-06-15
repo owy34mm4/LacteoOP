@@ -155,6 +155,7 @@ class ClienteMapper:
             nombre=doc.nombre,
             ciudad=doc.ciudad,
             direccion=doc.direccion,
+            telefono=doc.telefono,
         )
 
     @staticmethod
@@ -164,6 +165,7 @@ class ClienteMapper:
             nombre=entity.nombre,
             ciudad=entity.ciudad,
             direccion=entity.direccion,
+            telefono=entity.telefono,
         )
 
 
