@@ -82,3 +82,26 @@ class DatosGrafico:
     entregados: int
     devueltos: int
     pendientes: int
+
+
+@dataclass
+class Existencia:
+    sku: str
+    nombre: str
+    categoria: str
+    stock: int
+    max_stock: int
+    unidad: str
+    precio: int
+    dias_vencimiento: int
+    lote: str
+
+
+@dataclass
+class MovimientoInventario:
+    id: str
+    tipo: str          # "in" | "out"
+    titulo: str
+    cantidad: int
+    unidad: str
+    hora: str

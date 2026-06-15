@@ -7,7 +7,9 @@ from domain.entities import (
     Cliente,
     Conductor,
     DatosGrafico,
+    Existencia,
     LineaPedido,
+    MovimientoInventario,
     Parada,
     Pedido,
     Producto,
@@ -17,6 +19,8 @@ from domain.ports.outbound import (
     ClienteRepository,
     ConductorRepository,
     DatosGraficoRepository,
+    ExistenciaRepository,
+    MovimientoRepository,
     ParadaRepository,
     PedidoRepository,
     ProductoRepository,
@@ -270,6 +274,27 @@ _PRODUCTOS = [
 ]
 
 
+# ---- Seed data matching frontend PRODUCTS array ----
+_EXISTENCIAS = [
+    Existencia(sku="L-ENT-1L",  nombre="Leche entera 1 L",          categoria="Leches",    stock=248, max_stock=400, unidad="cajas",  precio=28800, dias_vencimiento=18, lote="LOT-5234"),
+    Existencia(sku="L-DES-1L",  nombre="Leche deslactosada 1 L",     categoria="Leches",    stock=45,  max_stock=200, unidad="cajas",  precio=32400, dias_vencimiento=12, lote="LOT-5235"),
+    Existencia(sku="YOG-NAT",   nombre="Yogur natural 1 kg",         categoria="Yogures",   stock=124, max_stock=300, unidad="uds",    precio=14500, dias_vencimiento=3,  lote="LOT-4821"),
+    Existencia(sku="QUE-CAMP",  nombre="Queso campesino 500 g",      categoria="Quesos",    stock=0,   max_stock=150, unidad="uds",    precio=18200, dias_vencimiento=8,  lote="LOT-5100"),
+    Existencia(sku="MANT-250",  nombre="Mantequilla 250 g",          categoria="Derivados", stock=312, max_stock=400, unidad="uds",    precio=9800,  dias_vencimiento=22, lote="LOT-5180"),
+    Existencia(sku="ARQ-500",   nombre="Arequipe 500 g",             categoria="Derivados", stock=67,  max_stock=200, unidad="uds",    precio=12400, dias_vencimiento=15, lote="LOT-5201"),
+    Existencia(sku="YOG-FRU",   nombre="Yogur de frutas 150 g (x6)", categoria="Yogures",   stock=88,  max_stock=250, unidad="packs",  precio=11200, dias_vencimiento=5,  lote="LOT-4900"),
+    Existencia(sku="CRE-LEC",   nombre="Crema de leche 500 ml",      categoria="Derivados", stock=18,  max_stock=100, unidad="uds",    precio=8600,  dias_vencimiento=7,  lote="LOT-5190"),
+]
+
+# ---- Seed data matching frontend MOVEMENTS array ----
+_MOVIMIENTOS = [
+    MovimientoInventario(id="MOV-1", tipo="out", titulo="Pedido #4823 · Panaderia Dona Rosa",       cantidad=-12, unidad="cajas", hora="09:42"),
+    MovimientoInventario(id="MOV-2", tipo="out", titulo="Pedido #4821 · Tienda La Esquina",         cantidad=-8,  unidad="cajas", hora="09:14"),
+    MovimientoInventario(id="MOV-3", tipo="in",  titulo="Recepcion lote LOT-5234 · Proveedor Alqueria", cantidad=200, unidad="cajas", hora="06:30"),
+    MovimientoInventario(id="MOV-4", tipo="out", titulo="Pedido #4818 · Cafe Los Almendros",        cantidad=-4,  unidad="cajas", hora="ayer 07:55"),
+]
+
+
 async def seed_if_empty(
     pedido_repo: PedidoRepository,
     parada_repo: ParadaRepository,
@@ -278,6 +303,8 @@ async def seed_if_empty(
     cliente_repo: ClienteRepository,
     producto_repo: ProductoRepository,
     grafico_repo: DatosGraficoRepository,
+    existencia_repo: ExistenciaRepository,
+    movimiento_repo: MovimientoRepository,
 ) -> None:
     count = await pedido_repo.count()
     if count > 0:
@@ -303,3 +330,11 @@ async def seed_if_empty(
 
     for dato in _GRAFICO:
         await grafico_repo.save(dato)
+
+    # Seed existencias only if collection is empty (independent check)
+    if await existencia_repo.count() == 0:
+        for existencia in _EXISTENCIAS:
+            await existencia_repo.save(existencia)
+
+        for movimiento in _MOVIMIENTOS:
+            await movimiento_repo.save(movimiento)

@@ -5,7 +5,9 @@ from domain.entities import (
     Cliente,
     Conductor,
     DatosGrafico,
+    Existencia,
     LineaPedido,
+    MovimientoInventario,
     Parada,
     Pedido,
     Producto,
@@ -15,6 +17,8 @@ from infrastructure.adapters.outbound.mongo.documents import (
     ClienteDocument,
     ConductorDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
     ParadaDocument,
     PedidoDocument,
     ProductoDocument,
@@ -204,4 +208,58 @@ class DatosGraficoMapper:
             entregados=entity.entregados,
             devueltos=entity.devueltos,
             pendientes=entity.pendientes,
+        )
+
+
+class ExistenciaMapper:
+    @staticmethod
+    def to_entity(doc: ExistenciaDocument) -> Existencia:
+        return Existencia(
+            sku=doc.sku,
+            nombre=doc.nombre,
+            categoria=doc.categoria,
+            stock=doc.stock,
+            max_stock=doc.max_stock,
+            unidad=doc.unidad,
+            precio=doc.precio,
+            dias_vencimiento=doc.dias_vencimiento,
+            lote=doc.lote,
+        )
+
+    @staticmethod
+    def to_document(entity: Existencia) -> ExistenciaDocument:
+        return ExistenciaDocument(
+            sku=entity.sku,
+            nombre=entity.nombre,
+            categoria=entity.categoria,
+            stock=entity.stock,
+            max_stock=entity.max_stock,
+            unidad=entity.unidad,
+            precio=entity.precio,
+            dias_vencimiento=entity.dias_vencimiento,
+            lote=entity.lote,
+        )
+
+
+class MovimientoInventarioMapper:
+    @staticmethod
+    def to_entity(doc: MovimientoInventarioDocument) -> MovimientoInventario:
+        return MovimientoInventario(
+            id=doc.movimiento_id,
+            tipo=doc.tipo,
+            titulo=doc.titulo,
+            cantidad=doc.cantidad,
+            unidad=doc.unidad,
+            hora=doc.hora,
+        )
+
+    @staticmethod
+    def to_document(entity: MovimientoInventario) -> MovimientoInventarioDocument:
+        return MovimientoInventarioDocument(
+            movimiento_id=entity.id,
+            tipo=entity.tipo,
+            titulo=entity.titulo,
+            cantidad=entity.cantidad,
+            unidad=entity.unidad,
+            hora=entity.hora,
         )

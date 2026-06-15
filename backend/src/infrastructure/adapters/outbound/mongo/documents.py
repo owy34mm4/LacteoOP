@@ -98,3 +98,30 @@ class DatosGraficoDocument(Document):
 
     class Settings:
         name = "datos_grafico"
+
+
+class ExistenciaDocument(Document):
+    sku: str
+    nombre: str
+    categoria: str
+    stock: int
+    max_stock: int
+    unidad: str
+    precio: int
+    dias_vencimiento: int
+    lote: str
+
+    class Settings:
+        name = "existencias"
+
+
+class MovimientoInventarioDocument(Document):
+    movimiento_id: str
+    tipo: str
+    titulo: str
+    cantidad: int
+    unidad: str
+    hora: str
+
+    class Settings:
+        name = "movimientos_inventario"

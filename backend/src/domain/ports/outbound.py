@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Parada, Pedido, Producto
+from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
 from domain.value_objects import EstadoPedido
 
 
@@ -111,6 +111,34 @@ class DatosGraficoRepository(ABC):
 
     @abstractmethod
     async def save(self, dato: DatosGrafico) -> DatosGrafico: ...
+
+    @abstractmethod
+    async def count(self) -> int: ...
+
+
+class ExistenciaRepository(ABC):
+    @abstractmethod
+    async def find_all(self) -> list[Existencia]: ...
+
+    @abstractmethod
+    async def find_by_sku(self, sku: str) -> Existencia | None: ...
+
+    @abstractmethod
+    async def save(self, existencia: Existencia) -> Existencia: ...
+
+    @abstractmethod
+    async def update(self, existencia: Existencia) -> Existencia: ...
+
+    @abstractmethod
+    async def count(self) -> int: ...
+
+
+class MovimientoRepository(ABC):
+    @abstractmethod
+    async def find_all(self) -> list[MovimientoInventario]: ...
+
+    @abstractmethod
+    async def save(self, movimiento: MovimientoInventario) -> MovimientoInventario: ...
 
     @abstractmethod
     async def count(self) -> int: ...

@@ -32,12 +32,19 @@ from infrastructure.adapters.outbound.mongo.documents import (  # noqa: E402
     ClienteDocument,
     ConductorDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
     ParadaDocument,
     PedidoDocument,
     ProductoDocument,
 )
-from domain.entities import Cliente  # noqa: E402
-from infrastructure.adapters.outbound.mongo.repositories import MongoClienteRepository, MongoPedidoRepository  # noqa: E402
+from domain.entities import Cliente, Existencia, MovimientoInventario  # noqa: E402
+from infrastructure.adapters.outbound.mongo.repositories import (  # noqa: E402
+    MongoClienteRepository,
+    MongoExistenciaRepository,
+    MongoMovimientoRepository,
+    MongoPedidoRepository,
+)
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 TEST_DB = "lacteoop_test"
@@ -50,6 +57,8 @@ ALL_DOCUMENT_MODELS = [
     ClienteDocument,
     ProductoDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
 ]
 
 
@@ -223,4 +232,123 @@ async def test_cliente_count(mongo_db):
 
     await repo.save(make_test_cliente("C-CNT-1"))
     await repo.save(make_test_cliente("C-CNT-2"))
+    assert await repo.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# MongoExistenciaRepository integration tests
+# ---------------------------------------------------------------------------
+
+def make_test_existencia(sku: str = "L-ENT-1L") -> Existencia:
+    return Existencia(
+        sku=sku,
+        nombre="Leche entera 1 L",
+        categoria="Leches",
+        stock=248,
+        max_stock=400,
+        unidad="cajas",
+        precio=28800,
+        dias_vencimiento=18,
+        lote="LOT-5234",
+    )
+
+
+@pytest.mark.integration
+async def test_existencia_save_and_find_by_sku(mongo_db):
+    """save→find_by_sku round-trip preserves all fields."""
+    repo = MongoExistenciaRepository()
+    existencia = make_test_existencia("L-ENT-1L")
+
+    saved = await repo.save(existencia)
+    assert saved.sku == "L-ENT-1L"
+    assert saved.stock == 248
+    assert saved.lote == "LOT-5234"
+
+    found = await repo.find_by_sku("L-ENT-1L")
+    assert found is not None
+    assert found.nombre == "Leche entera 1 L"
+    assert found.categoria == "Leches"
+    assert found.max_stock == 400
+    assert found.precio == 28800
+    assert found.dias_vencimiento == 18
+
+
+@pytest.mark.integration
+async def test_existencia_find_by_sku_returns_none_for_missing(mongo_db):
+    """find_by_sku on a non-existent sku returns None."""
+    repo = MongoExistenciaRepository()
+    result = await repo.find_by_sku("DOES-NOT-EXIST")
+    assert result is None
+
+
+@pytest.mark.integration
+async def test_existencia_update(mongo_db):
+    """update persists stock change."""
+    import dataclasses
+    repo = MongoExistenciaRepository()
+    await repo.save(make_test_existencia("YOG-NAT"))
+
+    found = await repo.find_by_sku("YOG-NAT")
+    assert found is not None
+    updated_entity = dataclasses.replace(found, stock=50)
+    updated = await repo.update(updated_entity)
+    assert updated.stock == 50
+
+    refetched = await repo.find_by_sku("YOG-NAT")
+    assert refetched is not None
+    assert refetched.stock == 50
+
+
+@pytest.mark.integration
+async def test_existencia_count(mongo_db):
+    """count reflects the number of saved documents."""
+    repo = MongoExistenciaRepository()
+    assert await repo.count() == 0
+
+    await repo.save(make_test_existencia("SKU-A"))
+    await repo.save(make_test_existencia("SKU-B"))
+    assert await repo.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# MongoMovimientoRepository integration tests
+# ---------------------------------------------------------------------------
+
+def make_test_movimiento(id: str = "MOV-001") -> MovimientoInventario:
+    return MovimientoInventario(
+        id=id,
+        tipo="out",
+        titulo="Pedido #4823 test",
+        cantidad=-12,
+        unidad="cajas",
+        hora="09:42",
+    )
+
+
+@pytest.mark.integration
+async def test_movimiento_save_and_find_all(mongo_db):
+    """save→find_all round-trip preserves all fields."""
+    repo = MongoMovimientoRepository()
+    mov = make_test_movimiento("MOV-INT-001")
+
+    saved = await repo.save(mov)
+    assert saved.id == "MOV-INT-001"
+    assert saved.tipo == "out"
+
+    all_movs = await repo.find_all()
+    assert len(all_movs) == 1
+    assert all_movs[0].titulo == "Pedido #4823 test"
+    assert all_movs[0].cantidad == -12
+    assert all_movs[0].unidad == "cajas"
+    assert all_movs[0].hora == "09:42"
+
+
+@pytest.mark.integration
+async def test_movimiento_count(mongo_db):
+    """count reflects the number of saved documents."""
+    repo = MongoMovimientoRepository()
+    assert await repo.count() == 0
+
+    await repo.save(make_test_movimiento("MOV-C1"))
+    await repo.save(make_test_movimiento("MOV-C2"))
     assert await repo.count() == 2

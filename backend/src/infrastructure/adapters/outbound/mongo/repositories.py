@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Parada, Pedido, Producto
+from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
     ConductorRepository,
     DatosGraficoRepository,
+    ExistenciaRepository,
+    MovimientoRepository,
     ParadaRepository,
     PedidoRepository,
     ProductoRepository,
@@ -16,6 +18,8 @@ from infrastructure.adapters.outbound.mongo.documents import (
     ClienteDocument,
     ConductorDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
     ParadaDocument,
     PedidoDocument,
     ProductoDocument,
@@ -25,6 +29,8 @@ from infrastructure.adapters.outbound.mongo.mappers import (
     ClienteMapper,
     ConductorMapper,
     DatosGraficoMapper,
+    ExistenciaMapper,
+    MovimientoInventarioMapper,
     ParadaMapper,
     PedidoMapper,
     ProductoMapper,
@@ -206,3 +212,50 @@ class MongoDatosGraficoRepository(DatosGraficoRepository):
 
     async def count(self) -> int:
         return await DatosGraficoDocument.count()
+
+
+class MongoExistenciaRepository(ExistenciaRepository):
+    async def find_all(self) -> list[Existencia]:
+        docs = await ExistenciaDocument.find_all().to_list()
+        return [ExistenciaMapper.to_entity(d) for d in docs]
+
+    async def find_by_sku(self, sku: str) -> Existencia | None:
+        doc = await ExistenciaDocument.find_one(ExistenciaDocument.sku == sku)
+        return ExistenciaMapper.to_entity(doc) if doc else None
+
+    async def save(self, existencia: Existencia) -> Existencia:
+        doc = ExistenciaMapper.to_document(existencia)
+        await doc.insert()
+        return ExistenciaMapper.to_entity(doc)
+
+    async def update(self, existencia: Existencia) -> Existencia:
+        doc = await ExistenciaDocument.find_one(ExistenciaDocument.sku == existencia.sku)
+        if doc is None:
+            raise ValueError(f"Existencia {existencia.sku} not found")
+        doc.stock = existencia.stock
+        doc.nombre = existencia.nombre
+        doc.categoria = existencia.categoria
+        doc.max_stock = existencia.max_stock
+        doc.unidad = existencia.unidad
+        doc.precio = existencia.precio
+        doc.dias_vencimiento = existencia.dias_vencimiento
+        doc.lote = existencia.lote
+        await doc.save()
+        return ExistenciaMapper.to_entity(doc)
+
+    async def count(self) -> int:
+        return await ExistenciaDocument.count()
+
+
+class MongoMovimientoRepository(MovimientoRepository):
+    async def find_all(self) -> list[MovimientoInventario]:
+        docs = await MovimientoInventarioDocument.find_all().to_list()
+        return [MovimientoInventarioMapper.to_entity(d) for d in docs]
+
+    async def save(self, movimiento: MovimientoInventario) -> MovimientoInventario:
+        doc = MovimientoInventarioMapper.to_document(movimiento)
+        await doc.insert()
+        return MovimientoInventarioMapper.to_entity(doc)
+
+    async def count(self) -> int:
+        return await MovimientoInventarioDocument.count()

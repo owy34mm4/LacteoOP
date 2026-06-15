@@ -8,6 +8,8 @@ from infrastructure.adapters.outbound.mongo.documents import (
     ClienteDocument,
     ConductorDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
     ParadaDocument,
     PedidoDocument,
     ProductoDocument,
@@ -31,6 +33,8 @@ async def init_database(settings: Settings) -> None:
             ClienteDocument,
             ProductoDocument,
             DatosGraficoDocument,
+            ExistenciaDocument,
+            MovimientoInventarioDocument,
         ],
     )
 

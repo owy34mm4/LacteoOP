@@ -3,13 +3,15 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, LineaPedido, Parada, Pedido, Producto
-from domain.ports.inbound import ClienteServicePort, OperacionServicePort, PedidoServicePort, RutaServicePort
+from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, LineaPedido, MovimientoInventario, Parada, Pedido, Producto
+from domain.ports.inbound import ClienteServicePort, InventarioServicePort, OperacionServicePort, PedidoServicePort, RutaServicePort
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
     ConductorRepository,
     DatosGraficoRepository,
+    ExistenciaRepository,
+    MovimientoRepository,
     ParadaRepository,
     PedidoRepository,
     ProductoRepository,
@@ -229,3 +231,27 @@ class ClienteService(ClienteServicePort):
         if not cliente:
             raise ValueError(f"Cliente {id} not found")
         await self._cliente_repo.delete(id)
+
+
+class InventarioService(InventarioServicePort):
+    def __init__(
+        self,
+        existencia_repo: ExistenciaRepository,
+        movimiento_repo: MovimientoRepository,
+    ) -> None:
+        self._existencia_repo = existencia_repo
+        self._movimiento_repo = movimiento_repo
+
+    async def listar_existencias(self) -> list[Existencia]:
+        return await self._existencia_repo.find_all()
+
+    async def ajustar_stock(self, sku: str, delta: int) -> Existencia:
+        existencia = await self._existencia_repo.find_by_sku(sku)
+        if not existencia:
+            raise ValueError(f"Existencia {sku} not found")
+        nuevo_stock = max(0, existencia.stock + delta)
+        existencia = dataclasses.replace(existencia, stock=nuevo_stock)
+        return await self._existencia_repo.update(existencia)
+
+    async def listar_movimientos(self) -> list[MovimientoInventario]:
+        return await self._movimiento_repo.find_all()
