@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { OrderListPanel } from './OrderList';
 import { NewOrderForm } from './NewOrderForm';
@@ -60,34 +59,31 @@ const PedidosPage: React.FC = () => {
   };
 
   return (
-    <div className="app">
-      <Sidebar />
-      <div className="main">
-        <TopBar title="Pedidos" lastSync={lastSync} onRefresh={load} />
-        <div className="workspace">
-          {loading ? (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--fg-3)' }}>Cargando pedidos…</div>
-          ) : (
-            <OrderListPanel
-              orders={orders}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              query={query}
-              setQuery={setQuery}
-              filter={filter}
-              setFilter={setFilter}
-            />
-          )}
-          <NewOrderForm
-            clients={clients}
-            products={products}
-            onConfirm={setDraft}
+    <>
+      <TopBar title="Pedidos" lastSync={lastSync} onRefresh={load} />
+      <div className="workspace">
+        {loading ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--fg-3)' }}>Cargando pedidos…</div>
+        ) : (
+          <OrderListPanel
+            orders={orders}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
           />
-        </div>
+        )}
+        <NewOrderForm
+          clients={clients}
+          products={products}
+          onConfirm={setDraft}
+        />
       </div>
       <PedidosConfirmModal draft={draft} onCancel={() => setDraft(null)} onConfirm={() => { void handleConfirm(); }} />
       {toast && <Toast message={toast} />}
-    </div>
+    </>
   );
 };
 

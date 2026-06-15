@@ -1,12 +1,13 @@
 import { API_BASE } from '../config';
-import type { Pedido, EstadoPedidoValue } from '../domain';
-import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort } from '../ports';
+import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue } from '../domain';
+import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, KPIs, BarData } from '../ports';
 
 // ---- Backend (snake_case Spanish) <-> domain (UI shape) mapping ----
-// The backend serializes pedidos as {id, hora, cliente_nombre, lineas[], monto,
-// direccion, ciudad, estado, timestamp} (see infrastructure/adapters/inbound/pedido_router.py).
-// The UI/domain shape is {id, time, client, items, address, amount, state}. This adapter
-// translates between them — that translation is the outbound adapter's responsibility.
+// CRITICAL: backend serializes in Spanish snake_case; UI domain shape is English.
+// This adapter is the ONLY place translations happen — tsc + vitest do NOT catch
+// a missing mapper because fetch returns `any`/`unknown` at runtime.
+
+// ---- Pedido ----
 interface ApiLinea {
   producto_sku: string;
   nombre: string;
@@ -17,7 +18,7 @@ interface ApiPedido {
   id: string;
   hora: string;
   cliente_nombre: string;
-  lineas: ApiLinea[];
+  lineas?: ApiLinea[];
   monto: number;
   direccion: string;
   ciudad: string;
@@ -35,6 +36,80 @@ const mapPedido = (p: ApiPedido): Pedido => ({
   state: p.estado as EstadoPedidoValue,
 });
 
+// ---- Parada ----
+interface ApiParada {
+  id: string;
+  numero: number;
+  cliente: string;
+  direccion: string;
+  items: number;
+  monto: number;
+  eta: string;
+  estado: string;
+  recibido_por: string | null;
+  problema: string | null;
+}
+
+const ESTADO_LABEL_MAP: Record<string, string> = {
+  pending: 'pendiente',
+  active: 'próxima parada',
+  done: 'entregado',
+  problem: 'problema',
+};
+
+const mapParada = (p: ApiParada): Parada => {
+  const status = p.estado as EstadoParadaValue;
+  return {
+    id: p.id,
+    num: p.numero,
+    client: p.cliente,
+    addr: p.direccion,
+    items: p.items,
+    amount: p.monto,
+    eta: p.eta,
+    status,
+    label: ESTADO_LABEL_MAP[status] ?? p.estado,
+    receivedBy: p.recibido_por,
+  };
+};
+
+// ---- Conductor ----
+interface ApiConductor {
+  id: string;
+  nombre: string;
+  iniciales: string;
+  zona: string;
+  paradas_hechas: number;
+  total_paradas: number;
+}
+
+const mapConductor = (c: ApiConductor): Conductor => ({
+  id: c.id,
+  name: c.nombre,
+  initials: c.iniciales,
+  zone: c.zona,
+  done: c.paradas_hechas,
+  total: c.total_paradas,
+});
+
+// ---- Alerta ----
+interface ApiAlerta {
+  id: string;
+  tipo: string;
+  titulo: string;
+  subtitulo: string;
+  timestamp: string;
+}
+
+const mapAlerta = (a: ApiAlerta): Alerta => ({
+  id: a.id,
+  kind: a.tipo as TipoAlertaValue,
+  title: a.titulo,
+  sub: a.subtitulo,
+  when: a.timestamp,
+});
+
+// ---- HTTP helpers ----
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
 const get = async <T>(url: string): Promise<T> => {
@@ -63,6 +138,8 @@ const patch = async <T>(url: string, body: unknown): Promise<T> => {
   return r.json() as Promise<T>;
 };
 
+// ---- Port implementations ----
+
 export const httpPedidoPort = (baseUrl: string = API_BASE): PedidoPort => ({
   // Trailing slash matches the backend collection routes (@router.get/post "/") and
   // avoids a 307 redirect that would not survive the /api proxy rewrite.
@@ -89,20 +166,23 @@ export const httpPedidoPort = (baseUrl: string = API_BASE): PedidoPort => ({
 });
 
 export const httpParadaPort = (baseUrl: string = API_BASE): ParadaPort => ({
-  listar: () => get(`${baseUrl}/ruta/paradas`),
-  marcarEntrega: (id, recibidoPor) => patch(`${baseUrl}/ruta/paradas/${id}/entrega`, { recibido_por: recibidoPor }),
-  reportarProblema: (id, problema) => patch(`${baseUrl}/ruta/paradas/${id}/problema`, { problema }),
-  sincronizar: (acciones) => post(`${baseUrl}/ruta/paradas/sync`, acciones),
+  listar: async () => (await get<ApiParada[]>(`${baseUrl}/ruta/paradas`)).map(mapParada),
+  marcarEntrega: async (id, recibidoPor) =>
+    mapParada(await patch<ApiParada>(`${baseUrl}/ruta/paradas/${id}/entrega`, { recibido_por: recibidoPor })),
+  reportarProblema: async (id, problema) =>
+    mapParada(await patch<ApiParada>(`${baseUrl}/ruta/paradas/${id}/problema`, { problema })),
+  sincronizar: async (acciones) =>
+    (await post<ApiParada[]>(`${baseUrl}/ruta/paradas/sync`, acciones)).map(mapParada),
 });
 
 export const httpConductorPort = (baseUrl: string = API_BASE): ConductorPort => ({
-  listar: () => get(`${baseUrl}/ruta/conductores`),
+  listar: async () => (await get<ApiConductor[]>(`${baseUrl}/ruta/conductores`)).map(mapConductor),
 });
 
 export const httpOperacionPort = (baseUrl: string = API_BASE): OperacionPort => ({
-  obtenerKpis: () => get(`${baseUrl}/operacion/kpis`),
-  obtenerAlertas: () => get(`${baseUrl}/operacion/alertas`),
-  obtenerGrafico: () => get(`${baseUrl}/operacion/grafico`),
-  obtenerPedidos: () => get(`${baseUrl}/operacion/pedidos`),
-  obtenerConductores: () => get(`${baseUrl}/operacion/conductores`),
+  obtenerKpis: () => get<KPIs>(`${baseUrl}/operacion/kpis`),
+  obtenerAlertas: async () => (await get<ApiAlerta[]>(`${baseUrl}/operacion/alertas`)).map(mapAlerta),
+  obtenerGrafico: () => get<BarData[]>(`${baseUrl}/operacion/grafico`),
+  obtenerPedidos: async () => (await get<ApiPedido[]>(`${baseUrl}/operacion/pedidos`)).map(mapPedido),
+  obtenerConductores: async () => (await get<ApiConductor[]>(`${baseUrl}/operacion/conductores`)).map(mapConductor),
 });

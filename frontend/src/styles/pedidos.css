@@ -1,50 +1,7 @@
 /* Pedidos kit — local styles built on top of colors_and_type.css */
+/* Sidebar styles removed: navigation is now handled by the unified AppSidebar in Shell.tsx */
 
-.app {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  height: 100vh;
-  background: var(--surface-page);
-  color: var(--fg-1);
-  font-family: var(--font-sans);
-}
-
-/* ---- Sidebar ---- */
-.sidebar {
-  background: var(--ink-900);
-  color: var(--paper-50);
-  display: flex; flex-direction: column;
-  padding: 20px 16px;
-  gap: 20px;
-}
-.brand-row { display: flex; align-items: center; gap: 10px; padding: 0 4px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-.brand-row .mark { width: 32px; height: 32px; border-radius: 8px; background: var(--brand); display:flex; align-items:center; justify-content:center; color: var(--paper-50); font-weight: 700; }
-.brand-row .name { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
-
-.nav { display: flex; flex-direction: column; gap: 2px; }
-.nav-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 8px 10px; border-radius: var(--r-md);
-  font-size: 14px; font-weight: 500;
-  color: rgba(251,248,240,0.7);
-  cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.nav-item:hover { background: rgba(255,255,255,0.05); color: var(--paper-50); }
-.nav-item.active { background: rgba(47,122,91,0.18); color: var(--paper-50); }
-.nav-item .ic { width: 18px; height: 18px; opacity: 0.9; }
-.nav-section-label { padding: 0 10px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(251,248,240,0.4); font-weight: 600; }
-
-.sidebar-footer {
-  margin-top: auto; padding: 12px 10px;
-  display: flex; align-items: center; gap: 10px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-500); color: var(--paper-50); display:flex; align-items:center; justify-content:center; font-weight:600; font-size: 12px; }
-.user-name { font-size: 13px; font-weight: 600; line-height: 1.2; }
-.user-role { font-size: 11px; color: rgba(251,248,240,0.5); }
-
-/* ---- Main ---- */
-.main { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+/* ---- TopBar ---- */
 .topbar {
   display: flex; align-items: center; gap: 16px;
   padding: 14px 24px;

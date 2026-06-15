@@ -1,4 +1,4 @@
-import type { Pedido, Parada, Conductor } from './domain';
+import type { Pedido, Parada, Conductor, Alerta } from './domain';
 
 export interface Cliente {
   id: string;
@@ -13,12 +13,20 @@ export interface Producto {
   price: number;
 }
 
+/** Typed shape returned by GET /operacion/kpis */
 export interface KPIs {
-  [key: string]: unknown;
+  pedidos_hoy: number;
+  en_ruta: number;
+  devoluciones: number;
+  cartera: number;
 }
 
+/** Typed shape returned by GET /operacion/grafico */
 export interface BarData {
-  [key: string]: unknown;
+  label: string;
+  entregados: number;
+  devueltos: number;
+  pendientes: number;
 }
 
 export interface NuevoPedidoLinea {
@@ -55,7 +63,7 @@ export interface ConductorPort {
 
 export interface OperacionPort {
   obtenerKpis(): Promise<KPIs>;
-  obtenerAlertas(): Promise<unknown[]>;
+  obtenerAlertas(): Promise<Alerta[]>;
   obtenerGrafico(): Promise<BarData[]>;
   obtenerPedidos(): Promise<Pedido[]>;
   obtenerConductores(): Promise<Conductor[]>;
