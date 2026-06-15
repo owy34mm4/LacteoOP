@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" width="220" height="56">
-
+  
   <g fill="#2F7A5B">
-
+    
     <path d="M14 8 h6 a2 2 0 0 1 2 2 v22 h12 a2 2 0 0 1 2 2 v6 a2 2 0 0 1 -2 2 H14 a2 2 0 0 1 -2 -2 V10 a2 2 0 0 1 2 -2 z"></path>
-
+    
     <circle cx="40" cy="14" r="4"></circle>
   </g>
-
+  
   <text x="54" y="36" font-family="Onest, system-ui, sans-serif" font-size="26" font-weight="700" fill="#13241F" letter-spacing="-0.5">LácteoOp</text>
 </svg>
