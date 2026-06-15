@@ -1,6 +1,6 @@
 import { API_BASE } from '../config';
 import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue } from '../domain';
-import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, KPIs, BarData, Cliente, Producto } from '../ports';
+import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, ClientePort, KPIs, BarData, Cliente, Producto, NuevoCliente } from '../ports';
 
 // ---- Backend (snake_case Spanish) <-> domain (UI shape) mapping ----
 // CRITICAL: backend serializes in Spanish snake_case; UI domain shape is English.
@@ -115,6 +115,7 @@ interface ApiCliente {
   nombre: string;
   ciudad: string;
   direccion: string;
+  telefono: string;
 }
 
 const mapCliente = (c: ApiCliente): Cliente => ({
@@ -122,7 +123,17 @@ const mapCliente = (c: ApiCliente): Cliente => ({
   name: c.nombre,
   city: c.ciudad,
   addr: c.direccion,
+  phone: c.telefono,
 });
+
+const mapClienteToApi = (input: Partial<NuevoCliente>): Partial<{nombre: string; ciudad: string; direccion: string; telefono: string}> => {
+  const body: Partial<{nombre: string; ciudad: string; direccion: string; telefono: string}> = {};
+  if (input.name !== undefined) body.nombre = input.name;
+  if (input.city !== undefined) body.ciudad = input.city;
+  if (input.addr !== undefined) body.direccion = input.addr;
+  if (input.phone !== undefined) body.telefono = input.phone;
+  return body;
+};
 
 // ---- Producto ----
 interface ApiProducto {
@@ -164,6 +175,11 @@ const patch = async <T>(url: string, body: unknown): Promise<T> => {
   });
   if (!r.ok) throw new Error(r.statusText);
   return r.json() as Promise<T>;
+};
+
+const del = async (url: string): Promise<void> => {
+  const r = await fetch(url, { method: 'DELETE' });
+  if (!r.ok) throw new Error(r.statusText);
 };
 
 // ---- Port implementations ----
@@ -213,4 +229,21 @@ export const httpOperacionPort = (baseUrl: string = API_BASE): OperacionPort => 
   obtenerGrafico: () => get<BarData[]>(`${baseUrl}/operacion/grafico`),
   obtenerPedidos: async () => (await get<ApiPedido[]>(`${baseUrl}/operacion/pedidos`)).map(mapPedido),
   obtenerConductores: async () => (await get<ApiConductor[]>(`${baseUrl}/operacion/conductores`)).map(mapConductor),
+});
+
+export const httpClientePort = (baseUrl: string = API_BASE): ClientePort => ({
+  listar: async () => (await get<ApiCliente[]>(`${baseUrl}/clientes/`)).map(mapCliente),
+  obtener: async (id) => mapCliente(await get<ApiCliente>(`${baseUrl}/clientes/${id}`)),
+  crear: async (input) =>
+    mapCliente(
+      await post<ApiCliente>(`${baseUrl}/clientes/`, {
+        nombre: input.name,
+        ciudad: input.city,
+        direccion: input.addr,
+        telefono: input.phone,
+      }),
+    ),
+  actualizar: async (id, input) =>
+    mapCliente(await patch<ApiCliente>(`${baseUrl}/clientes/${id}`, mapClienteToApi(input))),
+  eliminar: async (id) => del(`${baseUrl}/clientes/${id}`),
 });

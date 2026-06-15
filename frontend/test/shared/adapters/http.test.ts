@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort } from '../../../src/shared/adapters/http';
+import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort } from '../../../src/shared/adapters/http';
 
 const BASE = '/api';
 
@@ -382,5 +382,95 @@ describe('PedidoPort — listarProductos backend→domain mapping', () => {
     // Spanish fields must NOT leak through
     expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
     expect((result[0] as Record<string, unknown>)['precio']).toBeUndefined();
+  });
+});
+
+describe('ClientePort — backend→domain mapping', () => {
+  const apiCliente = {
+    id: 'C-128',
+    nombre: 'Tienda La Esquina',
+    ciudad: 'Palmira',
+    direccion: 'Cra 28 #14-12',
+    telefono: '+57 312 000 0001',
+  };
+
+  it('listar GETs /api/clientes/ and maps backend shape to domain shape', async () => {
+    global.fetch = mockFetchOk([apiCliente]) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).listar();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/clientes/`);
+    expect(result[0]).toEqual({
+      id: 'C-128',
+      name: 'Tienda La Esquina',
+      city: 'Palmira',
+      addr: 'Cra 28 #14-12',
+      phone: '+57 312 000 0001',
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['telefono']).toBeUndefined();
+  });
+
+  it('obtener GETs /api/clientes/{id} and maps the shape', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).obtener('C-128');
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/clientes/C-128`);
+    expect(result.phone).toBe('+57 312 000 0001');
+  });
+
+  it('crear POSTs /api/clientes/ with the correct backend body', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    await httpClientePort(BASE).crear({
+      name: 'Tienda La Esquina',
+      city: 'Palmira',
+      addr: 'Cra 28 #14-12',
+      phone: '+57 312 000 0001',
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Tienda La Esquina',
+          ciudad: 'Palmira',
+          direccion: 'Cra 28 #14-12',
+          telefono: '+57 312 000 0001',
+        }),
+      }),
+    );
+  });
+
+  it('crear returns a mapped domain Cliente including phone', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).crear({ name: 'X', city: 'Y', addr: 'Z', phone: '+57 300 000 0000' });
+    expect(result.phone).toBe('+57 312 000 0001');
+    expect((result as Record<string, unknown>)['telefono']).toBeUndefined();
+  });
+
+  it('actualizar PATCHes /api/clientes/{id} with mapped body', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    await httpClientePort(BASE).actualizar('C-128', { name: 'Nuevo Nombre', phone: '+57 315 999 0000' });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/C-128`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: 'Nuevo Nombre', telefono: '+57 315 999 0000' }),
+      }),
+    );
+  });
+
+  it('eliminar DELETEs /api/clientes/{id} with no body', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
+    await httpClientePort(BASE).eliminar('C-128');
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/C-128`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('eliminar rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpClientePort(BASE).eliminar('NOPE')).rejects.toThrow('Not Found');
   });
 });

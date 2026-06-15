@@ -5,6 +5,22 @@ export interface Cliente {
   name: string;
   city: string;
   addr: string;
+  phone: string;
+}
+
+export interface NuevoCliente {
+  name: string;
+  city: string;
+  addr: string;
+  phone: string;
+}
+
+export interface ClientePort {
+  listar(): Promise<Cliente[]>;
+  obtener(id: string): Promise<Cliente>;
+  crear(input: NuevoCliente): Promise<Cliente>;
+  actualizar(id: string, input: Partial<NuevoCliente>): Promise<Cliente>;
+  eliminar(id: string): Promise<void>;
 }
 
 export interface Producto {
