@@ -1,6 +1,6 @@
 import { API_BASE } from '../config';
 import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue } from '../domain';
-import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, KPIs, BarData } from '../ports';
+import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, KPIs, BarData, Cliente, Producto } from '../ports';
 
 // ---- Backend (snake_case Spanish) <-> domain (UI shape) mapping ----
 // CRITICAL: backend serializes in Spanish snake_case; UI domain shape is English.
@@ -109,6 +109,34 @@ const mapAlerta = (a: ApiAlerta): Alerta => ({
   when: a.timestamp,
 });
 
+// ---- Cliente ----
+interface ApiCliente {
+  id: string;
+  nombre: string;
+  ciudad: string;
+  direccion: string;
+}
+
+const mapCliente = (c: ApiCliente): Cliente => ({
+  id: c.id,
+  name: c.nombre,
+  city: c.ciudad,
+  addr: c.direccion,
+});
+
+// ---- Producto ----
+interface ApiProducto {
+  sku: string;
+  nombre: string;
+  precio: number;
+}
+
+const mapProducto = (p: ApiProducto): Producto => ({
+  sku: p.sku,
+  name: p.nombre,
+  price: p.precio,
+});
+
 // ---- HTTP helpers ----
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
@@ -161,8 +189,8 @@ export const httpPedidoPort = (baseUrl: string = API_BASE): PedidoPort => ({
     ),
   actualizarEstado: async (id, estado) =>
     mapPedido(await patch<ApiPedido>(`${baseUrl}/pedidos/${id}/estado`, { estado })),
-  listarClientes: () => get(`${baseUrl}/pedidos/clientes`),
-  listarProductos: () => get(`${baseUrl}/pedidos/productos`),
+  listarClientes: async () => (await get<ApiCliente[]>(`${baseUrl}/pedidos/clientes`)).map(mapCliente),
+  listarProductos: async () => (await get<ApiProducto[]>(`${baseUrl}/pedidos/productos`)).map(mapProducto),
 });
 
 export const httpParadaPort = (baseUrl: string = API_BASE): ParadaPort => ({

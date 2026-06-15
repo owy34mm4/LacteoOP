@@ -341,3 +341,46 @@ describe('OperacionPort — backend→domain mapping', () => {
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/conductores`);
   });
 });
+
+describe('PedidoPort — listarClientes backend→domain mapping', () => {
+  it('maps Spanish snake_case cliente to English domain Cliente', async () => {
+    const apiCliente = {
+      id: 'C-128',
+      nombre: 'Tienda La Esquina',
+      ciudad: 'Palmira',
+      direccion: 'Cra 28 #14-12',
+    };
+    global.fetch = mockFetchOk([apiCliente]) as unknown as typeof fetch;
+    const result = await httpPedidoPort(BASE).listarClientes();
+    expect(result[0]).toEqual({
+      id: 'C-128',
+      name: 'Tienda La Esquina',
+      city: 'Palmira',
+      addr: 'Cra 28 #14-12',
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['ciudad']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['direccion']).toBeUndefined();
+  });
+});
+
+describe('PedidoPort — listarProductos backend→domain mapping', () => {
+  it('maps Spanish snake_case producto to English domain Producto', async () => {
+    const apiProducto = {
+      sku: 'L-ENT-1L',
+      nombre: 'Leche entera 1 L',
+      precio: 28800,
+    };
+    global.fetch = mockFetchOk([apiProducto]) as unknown as typeof fetch;
+    const result = await httpPedidoPort(BASE).listarProductos();
+    expect(result[0]).toEqual({
+      sku: 'L-ENT-1L',
+      name: 'Leche entera 1 L',
+      price: 28800,
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['precio']).toBeUndefined();
+  });
+});
