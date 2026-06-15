@@ -106,25 +106,39 @@
   --font-sans:  'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono:  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --fw-regular:  400;
-  --fw-medium:   500;
-  --fw-semibold: 600;
-  --fw-bold:     700;
+  --fw-regular:  400;   /* @kind font */
+  --fw-medium:   500;   /* @kind font */
+  --fw-semibold: 600;   /* @kind font */
+  --fw-bold:     700;   /* @kind font */
 
   /* Type scale — px values; line-heights tuned per step. */
-  --t-display-size:    48px;  --t-display-lh:    1.05;  --t-display-tr: -0.02em;
-  --t-h1-size:         32px;  --t-h1-lh:         1.15;  --t-h1-tr:      -0.015em;
-  --t-h2-size:         24px;  --t-h2-lh:         1.2;   --t-h2-tr:      -0.01em;
-  --t-h3-size:         18px;  --t-h3-lh:         1.3;   --t-h3-tr:      -0.005em;
-  --t-body-size:       16px;  --t-body-lh:       1.5;   --t-body-tr:    0;
-  --t-body-sm-size:    14px;  --t-body-sm-lh:    1.45;  --t-body-sm-tr: 0;
-  --t-caption-size:    12px;  --t-caption-lh:    1.35;  --t-caption-tr: 0.005em;
+  --t-display-size:    48px;
+  --t-display-lh:      1.05;    /* @kind font */
+  --t-display-tr:      -0.02em; /* @kind font */
+  --t-h1-size:         32px;
+  --t-h1-lh:           1.15;    /* @kind font */
+  --t-h1-tr:           -0.015em;/* @kind font */
+  --t-h2-size:         24px;
+  --t-h2-lh:           1.2;     /* @kind font */
+  --t-h2-tr:           -0.01em; /* @kind font */
+  --t-h3-size:         18px;
+  --t-h3-lh:           1.3;     /* @kind font */
+  --t-h3-tr:           -0.005em;/* @kind font */
+  --t-body-size:       16px;
+  --t-body-lh:         1.5;     /* @kind font */
+  --t-body-tr:         0;       /* @kind font */
+  --t-body-sm-size:    14px;
+  --t-body-sm-lh:      1.45;    /* @kind font */
+  --t-body-sm-tr:      0;       /* @kind font */
+  --t-caption-size:    12px;
+  --t-caption-lh:      1.35;    /* @kind font */
+  --t-caption-tr:      0.005em; /* @kind font */
 
   /* Mobile driver: floor at 18px body, 20px buttons.
      Apply with .driver class on root. */
 
   /* ----- SPACING ----- */
-  --s-0:   0;
+  --s-0:   0; /* @kind spacing */
   --s-1:   4px;
   --s-2:   8px;
   --s-3:   12px;
@@ -150,16 +164,16 @@
   --shadow-focus:   0 0 0 2px var(--surface-page), 0 0 0 4px var(--brand);
 
   /* ----- MOTION ----- */
-  --ease-out:   cubic-bezier(0.2, 0.6, 0.2, 1);
-  --dur-fast:   120ms;
-  --dur-base:   180ms;
-  --dur-slow:   260ms;
+  --ease-out:   cubic-bezier(0.2, 0.6, 0.2, 1); /* @kind other */
+  --dur-fast:   120ms;  /* @kind other */
+  --dur-base:   180ms;  /* @kind other */
+  --dur-slow:   260ms;  /* @kind other */
 
   /* ----- LAYOUT ----- */
-  --content-max:        1200px;
-  --content-max-form:   960px;
-  --touch-min:          44px;   /* iOS HIG floor */
-  --touch-min-driver:   56px;   /* driver mobile floor */
+  --content-max:        1200px; /* @kind spacing */
+  --content-max-form:   960px;  /* @kind spacing */
+  --touch-min:          44px; /* @kind spacing */
+  --touch-min-driver:   56px; /* @kind spacing */
 }
 
 /* ============================================================
