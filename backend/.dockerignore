@@ -1,7 +1,29 @@
-test
-**/__pycache__
-*.pyc
-.pytest_cache
-.venv
+# Only src/ is needed to build the image. Keep everything else out of the context.
+
+# Tests & dev tooling
+test/
 requirements-dev.txt
 pytest.ini
+
+# Python caches
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Docs & repo meta (not needed to build)
+*.md
+.gitignore
+.dockerignore
+Dockerfile
+Dockerfile.prod
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

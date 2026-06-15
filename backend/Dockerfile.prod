@@ -33,6 +33,9 @@ COPY --from=builder /app /app
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
+# Execution stage runs as the distroless non-root user (uid 65532)
+USER nonroot:nonroot
+
 EXPOSE 8000
 
 # Exec-form entrypoint (distroless has no shell)

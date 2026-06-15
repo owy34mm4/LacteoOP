@@ -1,4 +1,29 @@
-﻿node_modules
-test
-*.local
+# Build needs: package.json, pnpm-lock.yaml, src/, index.html, vite/ts config, nginx.conf.
+# Everything below is regenerated, test-only, or irrelevant to the image build.
 
+# Dependencies & build output (reinstalled / rebuilt inside the image)
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Tests (not part of the production build)
+test/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Docs & repo meta
+*.md
+.gitignore
+.dockerignore
+Dockerfile
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.local
