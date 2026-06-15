@@ -20,8 +20,8 @@ Este repositorio contiene el prototipo funcional resultado del proceso de diseñ
 
 | Capa | Tecnología |
 |---|---|
-| Frontend | HTML · CSS · React 18 (CDN) · Babel standalone |
-| Servidor frontend | nginx:alpine |
+| Frontend | Vite 6 · React 18 · TypeScript 5 · React Router 6 · pnpm |
+| Servidor frontend | nginxinc/nginx-unprivileged:alpine (puerto 8080) |
 | Backend | FastAPI · Python 3.14 |
 | Gestor de paquetes | UV (`ghcr.io/astral-sh/uv:python3.14-trixie-slim`) |
 | Base de datos | MongoDB 7.0 (`beanie` + `pymongo.AsyncMongoClient`) |
@@ -71,19 +71,20 @@ docker compose up --build
 │   │   └── infrastructure/
 │   └── test/                   ← espeja src/
 └── frontend/
-    ├── Dockerfile
-    ├── package.json            ← vitest (solo dev)
-    ├── vitest.config.js
+    ├── Dockerfile              ← multi-stage: node:20-alpine build → nginx-unprivileged (8080)
+    ├── nginx.conf
+    ├── vite.config.ts
+    ├── vitest.config.ts
+    ├── package.json            ← packageManager: pnpm
     ├── Getting_Started.md
     ├── src/
-    │   ├── index.html
-    │   ├── colors_and_type.css
-    │   ├── assets/
-    │   ├── shared/             ← núcleo hexagonal
-    │   ├── pedidos/
-    │   ├── ruta/
-    │   └── operacion/
-    └── test/                   ← espeja src/shared/
+    │   ├── main.tsx
+    │   ├── app/                ← App shell + routes (React Router 6)
+    │   ├── shared/             ← núcleo hexagonal (domain, ports, adapters)
+    │   ├── components/         ← primitivos compartidos (Shell, Modal, Icons, Ley-1581)
+    │   ├── surfaces/           ← 7 superficies (pedidos, ruta, operacion, clientes, inventario, privacidad, configuracion)
+    │   └── styles/             ← tokens de diseño + CSS por superficie
+    └── test/                   ← espeja src/ (vitest + jsdom)
 ```
 
 ---
@@ -95,7 +96,7 @@ Ambas capas tienen tests automáticos que son **puerta de entrada a PRs** (`feat
 | Capa | Runner | Cobertura | Comando |
 |------|--------|-----------|---------|
 | Backend | pytest (asyncio) | Unitarios con repos fake + integración con Mongo | `cd backend && uv run pytest` |
-| Frontend | Vitest + jsdom | Núcleo `src/shared/` (domain + adapters) | `cd frontend && npm test` |
+| Frontend | Vitest + jsdom | Núcleo `src/shared/` (domain + adapters) | `cd frontend && pnpm test` |
 
 Los tests de integración del backend requieren MongoDB y se marcan con `@pytest.mark.integration`.  
 Los tests del frontend son solo de desarrollo — la imagen nginx no los incluye.
