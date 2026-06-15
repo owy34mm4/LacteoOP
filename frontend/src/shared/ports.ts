@@ -1,4 +1,4 @@
-import type { Pedido, Parada, Conductor, Alerta } from './domain';
+import type { Pedido, Parada, Conductor, Alerta, Existencia, Movimiento } from './domain';
 
 export interface Cliente {
   id: string;
@@ -83,4 +83,10 @@ export interface OperacionPort {
   obtenerGrafico(): Promise<BarData[]>;
   obtenerPedidos(): Promise<Pedido[]>;
   obtenerConductores(): Promise<Conductor[]>;
+}
+
+export interface InventarioPort {
+  listarExistencias(): Promise<Existencia[]>;
+  ajustarStock(sku: string, delta: number): Promise<Existencia>;
+  listarMovimientos(): Promise<Movimiento[]>;
 }

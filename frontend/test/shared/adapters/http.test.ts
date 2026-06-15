@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort } from '../../../src/shared/adapters/http';
+import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort, httpInventarioPort, mapExistencia, mapMovimiento } from '../../../src/shared/adapters/http';
 
 const BASE = '/api';
 
@@ -472,5 +472,117 @@ describe('ClientePort — backend→domain mapping', () => {
   it('eliminar rejects when response ok:false', async () => {
     global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
     await expect(httpClientePort(BASE).eliminar('NOPE')).rejects.toThrow('Not Found');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InventarioPort — mapping + routing
+// ---------------------------------------------------------------------------
+
+describe('InventarioPort — backend→domain mapping', () => {
+  const apiExistencia = {
+    sku: 'L-ENT-1L',
+    nombre: 'Leche entera 1 L',
+    categoria: 'Leches',
+    stock: 248,
+    max_stock: 400,
+    unidad: 'cajas',
+    precio: 28800,
+    dias_vencimiento: 18,
+    lote: 'LOT-5234',
+  };
+
+  it('mapExistencia maps all Spanish snake_case fields to English domain shape', () => {
+    const result = mapExistencia(apiExistencia);
+    expect(result).toEqual({
+      sku: 'L-ENT-1L',
+      name: 'Leche entera 1 L',
+      cat: 'Leches',
+      stock: 248,
+      max: 400,
+      unit: 'cajas',
+      price: 28800,
+      expiry: 18,
+      lot: 'LOT-5234',
+    });
+    // Spanish fields must NOT leak through
+    expect((result as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result as Record<string, unknown>)['categoria']).toBeUndefined();
+    expect((result as Record<string, unknown>)['max_stock']).toBeUndefined();
+    expect((result as Record<string, unknown>)['unidad']).toBeUndefined();
+    expect((result as Record<string, unknown>)['precio']).toBeUndefined();
+    expect((result as Record<string, unknown>)['dias_vencimiento']).toBeUndefined();
+    expect((result as Record<string, unknown>)['lote']).toBeUndefined();
+  });
+
+  it('listarExistencias GETs /api/inventario/existencias and maps each item', async () => {
+    global.fetch = mockFetchOk([apiExistencia]) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).listarExistencias();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/inventario/existencias`);
+    expect(result[0].name).toBe('Leche entera 1 L');
+    expect(result[0].max).toBe(400);
+    expect(result[0].expiry).toBe(18);
+  });
+
+  it('ajustarStock PATCHes /api/inventario/existencias/{sku}/stock with delta body', async () => {
+    global.fetch = mockFetchOk(apiExistencia) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).ajustarStock('L-ENT-1L', -10);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/inventario/existencias/L-ENT-1L/stock`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delta: -10 }),
+      }),
+    );
+    expect(result.sku).toBe('L-ENT-1L');
+  });
+
+  it('ajustarStock rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpInventarioPort(BASE).ajustarStock('NOPE', -10)).rejects.toThrow('Not Found');
+  });
+});
+
+describe('InventarioPort — Movimiento mapping', () => {
+  const apiMovimiento = {
+    id: 'MOV-1',
+    tipo: 'out',
+    titulo: 'Pedido #4823 · Panaderia',
+    cantidad: -12,
+    unidad: 'cajas',
+    hora: '09:42',
+  };
+
+  it('mapMovimiento maps all Spanish fields to English domain shape', () => {
+    const result = mapMovimiento(apiMovimiento);
+    expect(result).toEqual({
+      id: 'MOV-1',
+      type: 'out',
+      title: 'Pedido #4823 · Panaderia',
+      qty: -12,
+      unit: 'cajas',
+      time: '09:42',
+    });
+    // Spanish fields must NOT leak through
+    expect((result as Record<string, unknown>)['tipo']).toBeUndefined();
+    expect((result as Record<string, unknown>)['titulo']).toBeUndefined();
+    expect((result as Record<string, unknown>)['cantidad']).toBeUndefined();
+    expect((result as Record<string, unknown>)['hora']).toBeUndefined();
+  });
+
+  it('listarMovimientos GETs /api/inventario/movimientos and maps each item', async () => {
+    global.fetch = mockFetchOk([apiMovimiento]) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).listarMovimientos();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/inventario/movimientos`);
+    expect(result[0].type).toBe('out');
+    expect(result[0].title).toBe('Pedido #4823 · Panaderia');
+    expect(result[0].qty).toBe(-12);
+    expect(result[0].time).toBe('09:42');
+  });
+
+  it('listarMovimientos rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Internal Server Error') as unknown as typeof fetch;
+    await expect(httpInventarioPort(BASE).listarMovimientos()).rejects.toThrow('Internal Server Error');
   });
 });

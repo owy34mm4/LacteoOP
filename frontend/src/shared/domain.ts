@@ -66,6 +66,27 @@ export interface Alerta {
   when: string;
 }
 
+export interface Existencia {
+  sku: string;
+  name: string;
+  cat: string;
+  stock: number;
+  max: number;
+  unit: string;
+  price: number;
+  expiry: number;
+  lot: string;
+}
+
+export interface Movimiento {
+  id: string;
+  type: string;
+  title: string;
+  qty: number;
+  unit: string;
+  time: string;
+}
+
 // Entity factories (return frozen objects — identical to JS version)
 export const crearPedido = (data: Pedido): Readonly<Pedido> =>
   Object.freeze({ ...data });

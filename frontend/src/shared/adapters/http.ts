@@ -1,6 +1,6 @@
 import { API_BASE } from '../config';
-import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue } from '../domain';
-import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, ClientePort, KPIs, BarData, Cliente, Producto, NuevoCliente } from '../ports';
+import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue, Existencia, Movimiento } from '../domain';
+import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, ClientePort, InventarioPort, KPIs, BarData, Cliente, Producto, NuevoCliente } from '../ports';
 
 // ---- Backend (snake_case Spanish) <-> domain (UI shape) mapping ----
 // CRITICAL: backend serializes in Spanish snake_case; UI domain shape is English.
@@ -148,6 +148,50 @@ const mapProducto = (p: ApiProducto): Producto => ({
   price: p.precio,
 });
 
+// ---- Existencia ----
+interface ApiExistencia {
+  sku: string;
+  nombre: string;
+  categoria: string;
+  stock: number;
+  max_stock: number;
+  unidad: string;
+  precio: number;
+  dias_vencimiento: number;
+  lote: string;
+}
+
+export const mapExistencia = (e: ApiExistencia): Existencia => ({
+  sku: e.sku,
+  name: e.nombre,
+  cat: e.categoria,
+  stock: e.stock,
+  max: e.max_stock,
+  unit: e.unidad,
+  price: e.precio,
+  expiry: e.dias_vencimiento,
+  lot: e.lote,
+});
+
+// ---- Movimiento ----
+interface ApiMovimiento {
+  id: string;
+  tipo: string;
+  titulo: string;
+  cantidad: number;
+  unidad: string;
+  hora: string;
+}
+
+export const mapMovimiento = (m: ApiMovimiento): Movimiento => ({
+  id: m.id,
+  type: m.tipo,
+  title: m.titulo,
+  qty: m.cantidad,
+  unit: m.unidad,
+  time: m.hora,
+});
+
 // ---- HTTP helpers ----
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
@@ -246,4 +290,15 @@ export const httpClientePort = (baseUrl: string = API_BASE): ClientePort => ({
   actualizar: async (id, input) =>
     mapCliente(await patch<ApiCliente>(`${baseUrl}/clientes/${id}`, mapClienteToApi(input))),
   eliminar: async (id) => del(`${baseUrl}/clientes/${id}`),
+});
+
+export const httpInventarioPort = (baseUrl: string = API_BASE): InventarioPort => ({
+  listarExistencias: async () =>
+    (await get<ApiExistencia[]>(`${baseUrl}/inventario/existencias`)).map(mapExistencia),
+  ajustarStock: async (sku, delta) =>
+    mapExistencia(
+      await patch<ApiExistencia>(`${baseUrl}/inventario/existencias/${sku}/stock`, { delta }),
+    ),
+  listarMovimientos: async () =>
+    (await get<ApiMovimiento[]>(`${baseUrl}/inventario/movimientos`)).map(mapMovimiento),
 });
