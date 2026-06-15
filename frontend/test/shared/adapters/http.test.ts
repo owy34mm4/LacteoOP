@@ -110,7 +110,7 @@ describe('PedidoPort', () => {
   });
 });
 
-describe('ParadaPort', () => {
+describe('ParadaPort — URL routing', () => {
   it('listar calls GET /api/ruta/paradas', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpParadaPort(BASE).listar();
@@ -118,7 +118,12 @@ describe('ParadaPort', () => {
   });
 
   it('marcarEntrega calls PATCH /api/ruta/paradas/{id}/entrega', async () => {
-    global.fetch = mockFetchOk({}) as unknown as typeof fetch;
+    // Return a minimal ApiParada so the mapper has something to work with
+    const apiParada = {
+      id: 'p1', numero: 1, cliente: 'C', direccion: 'D', items: 2,
+      monto: 10000, eta: '10:00', estado: 'done', recibido_por: 'Juan', problema: null,
+    };
+    global.fetch = mockFetchOk(apiParada) as unknown as typeof fetch;
     await httpParadaPort(BASE).marcarEntrega('p1', 'Juan');
     expect(global.fetch).toHaveBeenCalledWith(
       `${BASE}/ruta/paradas/p1/entrega`,
@@ -127,7 +132,11 @@ describe('ParadaPort', () => {
   });
 
   it('reportarProblema calls PATCH', async () => {
-    global.fetch = mockFetchOk({}) as unknown as typeof fetch;
+    const apiParada = {
+      id: 'p2', numero: 2, cliente: 'C', direccion: 'D', items: 1,
+      monto: 5000, eta: '11:00', estado: 'problem', recibido_por: null, problema: 'Sin acceso',
+    };
+    global.fetch = mockFetchOk(apiParada) as unknown as typeof fetch;
     await httpParadaPort(BASE).reportarProblema('p2', 'Sin acceso');
     expect(global.fetch).toHaveBeenCalledWith(
       `${BASE}/ruta/paradas/p2/problema`,
@@ -146,36 +155,187 @@ describe('ParadaPort', () => {
   });
 });
 
-describe('ConductorPort', () => {
+// ---- Mapping assertions (guard against the Phase-1 class of bug) ----
+// These tests prove that the Spanish snake_case backend shape is translated to the
+// English domain shape. `fetch` returning `r.json() as T` is unchecked — only these
+// tests catch a missing/wrong field mapping at dev-time.
+
+describe('ParadaPort — backend→domain mapping', () => {
+  it('listar maps Spanish snake_case backend shape to English domain shape', async () => {
+    const apiParada = {
+      id: 'p1',
+      numero: 3,
+      cliente: 'Lácteos El Norte',
+      direccion: 'Cra 10 #5-20',
+      items: 4,
+      monto: 85000,
+      eta: '09:30',
+      estado: 'active',
+      recibido_por: null,
+      problema: null,
+    };
+    global.fetch = mockFetchOk([apiParada]) as unknown as typeof fetch;
+    const result = await httpParadaPort(BASE).listar();
+    expect(result[0]).toEqual({
+      id: 'p1',
+      num: 3,
+      client: 'Lácteos El Norte',
+      addr: 'Cra 10 #5-20',
+      items: 4,
+      amount: 85000,
+      eta: '09:30',
+      status: 'active',
+      label: 'próxima parada',
+      receivedBy: null,
+    });
+  });
+
+  it('maps estado→label correctly for all four estados', async () => {
+    const base = { id: 'x', numero: 1, cliente: 'C', direccion: 'D', items: 0, monto: 0, eta: '08:00', recibido_por: null, problema: null };
+    const cases: Array<[string, string]> = [
+      ['pending', 'pendiente'],
+      ['active',  'próxima parada'],
+      ['done',    'entregado'],
+      ['problem', 'problema'],
+    ];
+    for (const [estado, expectedLabel] of cases) {
+      global.fetch = mockFetchOk([{ ...base, estado }]) as unknown as typeof fetch;
+      const [p] = await httpParadaPort(BASE).listar();
+      expect(p.status).toBe(estado);
+      expect(p.label).toBe(expectedLabel);
+    }
+  });
+
+  it('marcarEntrega returns a mapped domain Parada', async () => {
+    const apiParada = {
+      id: 'p1', numero: 1, cliente: 'C', direccion: 'D', items: 2,
+      monto: 10000, eta: '10:00', estado: 'done', recibido_por: 'Ana', problema: null,
+    };
+    global.fetch = mockFetchOk(apiParada) as unknown as typeof fetch;
+    const result = await httpParadaPort(BASE).marcarEntrega('p1', 'Ana');
+    expect(result.receivedBy).toBe('Ana');
+    expect(result.status).toBe('done');
+    expect(result.label).toBe('entregado');
+    // confirms Spanish fields are NOT leaking through
+    expect((result as Record<string, unknown>)['recibido_por']).toBeUndefined();
+    expect((result as Record<string, unknown>)['numero']).toBeUndefined();
+  });
+});
+
+describe('ConductorPort — backend→domain mapping', () => {
   it('listar calls GET /api/ruta/conductores', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpConductorPort(BASE).listar();
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/ruta/conductores`);
   });
+
+  it('listar maps Spanish snake_case to English domain shape', async () => {
+    const apiConductor = {
+      id: 'c1',
+      nombre: 'Carlos Ruiz',
+      iniciales: 'CR',
+      zona: 'Norte',
+      paradas_hechas: 5,
+      total_paradas: 12,
+    };
+    global.fetch = mockFetchOk([apiConductor]) as unknown as typeof fetch;
+    const result = await httpConductorPort(BASE).listar();
+    expect(result[0]).toEqual({
+      id: 'c1',
+      name: 'Carlos Ruiz',
+      initials: 'CR',
+      zone: 'Norte',
+      done: 5,
+      total: 12,
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['paradas_hechas']).toBeUndefined();
+  });
 });
 
-describe('OperacionPort', () => {
-  it('obtenerKpis', async () => {
-    global.fetch = mockFetchOk({}) as unknown as typeof fetch;
-    await httpOperacionPort(BASE).obtenerKpis();
+describe('OperacionPort — backend→domain mapping', () => {
+  it('obtenerKpis returns typed KPI dict', async () => {
+    const apiKpis = { pedidos_hoy: 42, en_ruta: 8, devoluciones: 2, cartera: 1500000 };
+    global.fetch = mockFetchOk(apiKpis) as unknown as typeof fetch;
+    const result = await httpOperacionPort(BASE).obtenerKpis();
+    expect(result).toEqual(apiKpis);
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/kpis`);
   });
+
+  it('obtenerAlertas maps Spanish snake_case to English domain shape', async () => {
+    const apiAlerta = {
+      id: 'a1',
+      tipo: 'danger',
+      titulo: 'Stock agotado',
+      subtitulo: 'Leche entera sin stock',
+      timestamp: '08:14',
+    };
+    global.fetch = mockFetchOk([apiAlerta]) as unknown as typeof fetch;
+    const result = await httpOperacionPort(BASE).obtenerAlertas();
+    expect(result[0]).toEqual({
+      id: 'a1',
+      kind: 'danger',
+      title: 'Stock agotado',
+      sub: 'Leche entera sin stock',
+      when: '08:14',
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['tipo']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['titulo']).toBeUndefined();
+  });
+
+  it('obtenerGrafico returns BarData as-is (already domain-friendly)', async () => {
+    const apiBar = { label: 'Lun', entregados: 10, devueltos: 1, pendientes: 3 };
+    global.fetch = mockFetchOk([apiBar]) as unknown as typeof fetch;
+    const result = await httpOperacionPort(BASE).obtenerGrafico();
+    expect(result[0]).toEqual(apiBar);
+  });
+
+  it('obtenerPedidos maps via mapPedido (items=0 when lineas absent)', async () => {
+    const apiPedido = {
+      id: 'p99', hora: '07:45', cliente_nombre: 'Tienda X',
+      monto: 55000, direccion: 'Cl 8 #2-10', ciudad: 'Cali',
+      estado: 'enruta', timestamp: '2026-06-15T07:45:00',
+      // no lineas field — operacion endpoint omits it
+    };
+    global.fetch = mockFetchOk([apiPedido]) as unknown as typeof fetch;
+    const result = await httpOperacionPort(BASE).obtenerPedidos();
+    expect(result[0]).toEqual({
+      id: 'p99', time: '07:45', client: 'Tienda X',
+      items: 0, address: 'Cl 8 #2-10', amount: 55000, state: 'enruta',
+    });
+  });
+
+  it('obtenerConductores maps Spanish fields to English domain', async () => {
+    const apiConductor = {
+      id: 'c2', nombre: 'María López', iniciales: 'ML',
+      zona: 'Sur', paradas_hechas: 3, total_paradas: 10,
+    };
+    global.fetch = mockFetchOk([apiConductor]) as unknown as typeof fetch;
+    const result = await httpOperacionPort(BASE).obtenerConductores();
+    expect(result[0].name).toBe('María López');
+    expect(result[0].done).toBe(3);
+    expect(result[0].total).toBe(10);
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+  });
+
   it('obtenerAlertas', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpOperacionPort(BASE).obtenerAlertas();
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/alertas`);
   });
-  it('obtenerGrafico', async () => {
+  it('obtenerGrafico route', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpOperacionPort(BASE).obtenerGrafico();
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/grafico`);
   });
-  it('obtenerPedidos', async () => {
+  it('obtenerPedidos route', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpOperacionPort(BASE).obtenerPedidos();
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/pedidos`);
   });
-  it('obtenerConductores', async () => {
+  it('obtenerConductores route', async () => {
     global.fetch = mockFetchOk([]) as unknown as typeof fetch;
     await httpOperacionPort(BASE).obtenerConductores();
     expect(global.fetch).toHaveBeenCalledWith(`${BASE}/operacion/conductores`);
