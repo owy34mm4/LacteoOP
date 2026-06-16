@@ -66,6 +66,27 @@ export interface Alerta {
   when: string;
 }
 
+export interface Existencia {
+  sku: string;
+  name: string;
+  cat: string;
+  stock: number;
+  max: number;
+  unit: string;
+  price: number;
+  expiry: number;
+  lot: string;
+}
+
+export interface Movimiento {
+  id: string;
+  type: string;
+  title: string;
+  qty: number;
+  unit: string;
+  time: string;
+}
+
 // Entity factories (return frozen objects — identical to JS version)
 export const crearPedido = (data: Pedido): Readonly<Pedido> =>
   Object.freeze({ ...data });
@@ -78,3 +99,34 @@ export const crearConductor = (data: Conductor): Readonly<Conductor> =>
 
 export const crearAlerta = (data: Alerta): Readonly<Alerta> =>
   Object.freeze({ ...data });
+
+// ---- Configuracion (singleton settings) ----
+
+export interface Perfil {
+  iniciales: string;
+  nombre: string;
+  email: string;
+  telefono: string;
+  rol: string;
+}
+
+export interface Notificaciones {
+  newOrder: boolean;      // nuevo_pedido
+  lowStock: boolean;      // stock_bajo
+  expiry: boolean;        // vencimiento
+  driverDelay: boolean;   // conductor_sin_reporte
+  dailySummary: boolean;  // resumen_diario
+  sound: boolean;         // sonido
+}
+
+export interface Sistema {
+  autoRefresh: boolean;       // actualizacion_automatica
+  refreshInterval: string;    // intervalo_actualizacion ("1"|"3"|"5"|"10")
+}
+
+export interface Configuracion {
+  id: string;
+  perfil: Perfil;
+  notificaciones: Notificaciones;
+  sistema: Sistema;
+}

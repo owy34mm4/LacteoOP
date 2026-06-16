@@ -3,18 +3,27 @@ from __future__ import annotations
 from domain.entities import (
     Alerta,
     Cliente,
+    Configuracion,
     Conductor,
     DatosGrafico,
+    Existencia,
     LineaPedido,
+    MovimientoInventario,
+    Notificaciones,
     Parada,
     Pedido,
+    Perfil,
     Producto,
+    Sistema,
 )
 from infrastructure.adapters.outbound.mongo.documents import (
     AlertaDocument,
     ClienteDocument,
+    ConfiguracionDocument,
     ConductorDocument,
     DatosGraficoDocument,
+    ExistenciaDocument,
+    MovimientoInventarioDocument,
     ParadaDocument,
     PedidoDocument,
     ProductoDocument,
@@ -204,4 +213,98 @@ class DatosGraficoMapper:
             entregados=entity.entregados,
             devueltos=entity.devueltos,
             pendientes=entity.pendientes,
+        )
+
+
+class ExistenciaMapper:
+    @staticmethod
+    def to_entity(doc: ExistenciaDocument) -> Existencia:
+        return Existencia(
+            sku=doc.sku,
+            nombre=doc.nombre,
+            categoria=doc.categoria,
+            stock=doc.stock,
+            max_stock=doc.max_stock,
+            unidad=doc.unidad,
+            precio=doc.precio,
+            dias_vencimiento=doc.dias_vencimiento,
+            lote=doc.lote,
+        )
+
+    @staticmethod
+    def to_document(entity: Existencia) -> ExistenciaDocument:
+        return ExistenciaDocument(
+            sku=entity.sku,
+            nombre=entity.nombre,
+            categoria=entity.categoria,
+            stock=entity.stock,
+            max_stock=entity.max_stock,
+            unidad=entity.unidad,
+            precio=entity.precio,
+            dias_vencimiento=entity.dias_vencimiento,
+            lote=entity.lote,
+        )
+
+
+class MovimientoInventarioMapper:
+    @staticmethod
+    def to_entity(doc: MovimientoInventarioDocument) -> MovimientoInventario:
+        return MovimientoInventario(
+            id=doc.movimiento_id,
+            tipo=doc.tipo,
+            titulo=doc.titulo,
+            cantidad=doc.cantidad,
+            unidad=doc.unidad,
+            hora=doc.hora,
+        )
+
+    @staticmethod
+    def to_document(entity: MovimientoInventario) -> MovimientoInventarioDocument:
+        return MovimientoInventarioDocument(
+            movimiento_id=entity.id,
+            tipo=entity.tipo,
+            titulo=entity.titulo,
+            cantidad=entity.cantidad,
+            unidad=entity.unidad,
+            hora=entity.hora,
+        )
+
+
+class ConfiguracionMapper:
+    @staticmethod
+    def to_entity(doc: ConfiguracionDocument) -> Configuracion:
+        p = doc.perfil
+        n = doc.notificaciones
+        s = doc.sistema
+        return Configuracion(
+            id=doc.config_id,
+            perfil=Perfil(
+                iniciales=p.get("iniciales", ""),
+                nombre=p.get("nombre", ""),
+                email=p.get("email", ""),
+                telefono=p.get("telefono", ""),
+                rol=p.get("rol", ""),
+            ),
+            notificaciones=Notificaciones(
+                nuevo_pedido=n.get("nuevo_pedido", True),
+                stock_bajo=n.get("stock_bajo", True),
+                vencimiento=n.get("vencimiento", True),
+                conductor_sin_reporte=n.get("conductor_sin_reporte", False),
+                resumen_diario=n.get("resumen_diario", True),
+                sonido=n.get("sonido", False),
+            ),
+            sistema=Sistema(
+                actualizacion_automatica=s.get("actualizacion_automatica", True),
+                intervalo_actualizacion=s.get("intervalo_actualizacion", "5"),
+            ),
+        )
+
+    @staticmethod
+    def to_document(entity: Configuracion) -> ConfiguracionDocument:
+        import dataclasses
+        return ConfiguracionDocument(
+            config_id=entity.id,
+            perfil=dataclasses.asdict(entity.perfil),
+            notificaciones=dataclasses.asdict(entity.notificaciones),
+            sistema=dataclasses.asdict(entity.sistema),
         )

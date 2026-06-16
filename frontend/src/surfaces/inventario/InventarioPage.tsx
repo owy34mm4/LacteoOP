@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../../styles/inventario.css';
 import {
   LIconBox,
@@ -6,28 +6,11 @@ import {
   LIconRefresh,
   LIconSearch,
 } from '../../components/Icons';
+import type { Existencia, Movimiento } from '../../shared/domain';
+import { httpInventarioPort } from '../../shared/adapters/http';
 
-// mock — no backend endpoint yet
-const PRODUCTS = [
-  { sku: 'L-ENT-1L',  name: 'Leche entera 1 L',           cat: 'Leches',    stock: 248, max: 400, unit: 'cajas',  price: 28800, expiry: 18, lot: 'LOT-5234' },
-  { sku: 'L-DES-1L',  name: 'Leche deslactosada 1 L',      cat: 'Leches',    stock: 45,  max: 200, unit: 'cajas',  price: 32400, expiry: 12, lot: 'LOT-5235' },
-  { sku: 'YOG-NAT',   name: 'Yogur natural 1 kg',          cat: 'Yogures',   stock: 124, max: 300, unit: 'uds',    price: 14500, expiry: 3,  lot: 'LOT-4821' },
-  { sku: 'QUE-CAMP',  name: 'Queso campesino 500 g',       cat: 'Quesos',    stock: 0,   max: 150, unit: 'uds',    price: 18200, expiry: 8,  lot: 'LOT-5100' },
-  { sku: 'MANT-250',  name: 'Mantequilla 250 g',           cat: 'Derivados', stock: 312, max: 400, unit: 'uds',    price: 9800,  expiry: 22, lot: 'LOT-5180' },
-  { sku: 'ARQ-500',   name: 'Arequipe 500 g',              cat: 'Derivados', stock: 67,  max: 200, unit: 'uds',    price: 12400, expiry: 15, lot: 'LOT-5201' },
-  { sku: 'YOG-FRU',   name: 'Yogur de frutas 150 g (x6)',  cat: 'Yogures',   stock: 88,  max: 250, unit: 'packs',  price: 11200, expiry: 5,  lot: 'LOT-4900' },
-  { sku: 'CRE-LEC',   name: 'Crema de leche 500 ml',       cat: 'Derivados', stock: 18,  max: 100, unit: 'uds',    price: 8600,  expiry: 7,  lot: 'LOT-5190' },
-] as const;
+const inventarioPort = httpInventarioPort();
 
-// mock — no backend endpoint yet
-const MOVEMENTS = [
-  { type: 'out', title: 'Pedido #4823 · Panaderia Dona Rosa',      qty: -12, unit: 'cajas',  time: '09:42' },
-  { type: 'out', title: 'Pedido #4821 · Tienda La Esquina',        qty: -8,  unit: 'cajas',  time: '09:14' },
-  { type: 'in',  title: 'Recepcion lote LOT-5234 · Proveedor Alqueria', qty: 200, unit: 'cajas', time: '06:30' },
-  { type: 'out', title: 'Pedido #4818 · Cafe Los Almendros',       qty: -4,  unit: 'cajas',  time: 'ayer 07:55' },
-] as const;
-
-type Product = typeof PRODUCTS[number];
 type FilterKey = 'all' | 'agotado' | 'bajo' | 'expiry';
 
 // ---- Sub-components ----
@@ -56,7 +39,7 @@ const ExpiryChip: React.FC<ExpiryChipProps> = ({ days }) => {
   return <span className={`expiry-chip ${cls}`}>{label}</span>;
 };
 
-interface InvStatsBarProps { products: readonly Product[]; }
+interface InvStatsBarProps { products: Existencia[]; }
 const InvStatsBar: React.FC<InvStatsBarProps> = ({ products }) => {
   const total   = products.length;
   const agotado = products.filter((p) => p.stock === 0).length;
@@ -85,7 +68,7 @@ const InvStatsBar: React.FC<InvStatsBarProps> = ({ products }) => {
 };
 
 interface InvTableProps {
-  products: readonly Product[];
+  products: Existencia[];
   query: string;
   filter: FilterKey;
   selectedSku: string | null;
@@ -144,8 +127,11 @@ const InvTable: React.FC<InvTableProps> = ({ products, query, filter, selectedSk
   );
 };
 
-interface InvDetailProps { product: Product | undefined; }
-const InvDetail: React.FC<InvDetailProps> = ({ product }) => {
+interface InvDetailProps {
+  product: Existencia | undefined;
+  movements: Movimiento[];
+}
+const InvDetail: React.FC<InvDetailProps> = ({ product, movements }) => {
   if (!product) {
     return (
       <div className="inv-detail" style={{ alignItems: 'center', justifyContent: 'center', color: 'var(--fg-3)', minHeight: 300 }}>
@@ -172,8 +158,8 @@ const InvDetail: React.FC<InvDetailProps> = ({ product }) => {
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
           Movimientos recientes
         </div>
-        {MOVEMENTS.map((m, i) => (
-          <div key={i} className="movement">
+        {movements.map((m) => (
+          <div key={m.id} className="movement">
             <div className={`icon-wrap ${m.type}`}>
               {m.type === 'in' ? <LIconPlus size={14} /> : <LIconBox size={14} />}
             </div>
@@ -199,15 +185,36 @@ const FILTERS: { k: FilterKey; label: string }[] = [
 ];
 
 const InventarioPage: React.FC = () => {
-  const [filter, setFilter]       = useState<FilterKey>('all');
-  const [query, setQuery]         = useState('');
-  const [selectedSku, setSelected] = useState<string | null>('L-ENT-1L');
-  const [lastSync, setLastSync]   = useState('hace 8 segundos');
+  const [filter, setFilter]         = useState<FilterKey>('all');
+  const [query, setQuery]           = useState('');
+  const [selectedSku, setSelected]  = useState<string | null>('L-ENT-1L');
+  const [lastSync, setLastSync]     = useState('cargando...');
+  const [products, setProducts]     = useState<Existencia[]>([]);
+  const [movements, setMovements]   = useState<Movimiento[]>([]);
 
-  const selected = PRODUCTS.find((p) => p.sku === selectedSku);
+  const loadData = async () => {
+    try {
+      const [exs, movs] = await Promise.all([
+        inventarioPort.listarExistencias(),
+        inventarioPort.listarMovimientos(),
+      ]);
+      setProducts(exs);
+      setMovements(movs);
+      setLastSync('justo ahora');
+    } catch {
+      setLastSync('error al sincronizar');
+    }
+  };
+
+  useEffect(() => {
+    void loadData();
+  }, []);
+
+  const selected = products.find((p) => p.sku === selectedSku);
 
   const handleRefresh = () => {
-    setLastSync('justo ahora');
+    setLastSync('cargando...');
+    void loadData();
   };
 
   return (
@@ -233,7 +240,7 @@ const InventarioPage: React.FC = () => {
 
       {/* Stats summary */}
       <div style={{ marginBottom: 20 }}>
-        <InvStatsBar products={PRODUCTS} />
+        <InvStatsBar products={products} />
       </div>
 
       {/* Toolbar: search + filter chips */}
@@ -263,14 +270,14 @@ const InventarioPage: React.FC = () => {
       <div className="inv-workspace">
         <div className="lo-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <InvTable
-            products={PRODUCTS}
+            products={products}
             query={query}
             filter={filter}
             selectedSku={selectedSku}
             onSelect={setSelected}
           />
         </div>
-        <InvDetail product={selected} />
+        <InvDetail product={selected} movements={movements} />
       </div>
     </div>
   );

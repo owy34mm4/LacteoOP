@@ -1,6 +1,6 @@
 import { API_BASE } from '../config';
-import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue } from '../domain';
-import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, ClientePort, KPIs, BarData, Cliente, Producto, NuevoCliente } from '../ports';
+import type { Pedido, Parada, Conductor, Alerta, EstadoPedidoValue, EstadoParadaValue, TipoAlertaValue, Existencia, Movimiento, Configuracion } from '../domain';
+import type { PedidoPort, ParadaPort, ConductorPort, OperacionPort, ClientePort, InventarioPort, ConfiguracionPort, KPIs, BarData, Cliente, Producto, NuevoCliente, PatchConfiguracion } from '../ports';
 
 // ---- Backend (snake_case Spanish) <-> domain (UI shape) mapping ----
 // CRITICAL: backend serializes in Spanish snake_case; UI domain shape is English.
@@ -148,6 +148,50 @@ const mapProducto = (p: ApiProducto): Producto => ({
   price: p.precio,
 });
 
+// ---- Existencia ----
+interface ApiExistencia {
+  sku: string;
+  nombre: string;
+  categoria: string;
+  stock: number;
+  max_stock: number;
+  unidad: string;
+  precio: number;
+  dias_vencimiento: number;
+  lote: string;
+}
+
+export const mapExistencia = (e: ApiExistencia): Existencia => ({
+  sku: e.sku,
+  name: e.nombre,
+  cat: e.categoria,
+  stock: e.stock,
+  max: e.max_stock,
+  unit: e.unidad,
+  price: e.precio,
+  expiry: e.dias_vencimiento,
+  lot: e.lote,
+});
+
+// ---- Movimiento ----
+interface ApiMovimiento {
+  id: string;
+  tipo: string;
+  titulo: string;
+  cantidad: number;
+  unidad: string;
+  hora: string;
+}
+
+export const mapMovimiento = (m: ApiMovimiento): Movimiento => ({
+  id: m.id,
+  type: m.tipo,
+  title: m.titulo,
+  qty: m.cantidad,
+  unit: m.unidad,
+  time: m.hora,
+});
+
 // ---- HTTP helpers ----
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
@@ -246,4 +290,95 @@ export const httpClientePort = (baseUrl: string = API_BASE): ClientePort => ({
   actualizar: async (id, input) =>
     mapCliente(await patch<ApiCliente>(`${baseUrl}/clientes/${id}`, mapClienteToApi(input))),
   eliminar: async (id) => del(`${baseUrl}/clientes/${id}`),
+});
+
+export const httpInventarioPort = (baseUrl: string = API_BASE): InventarioPort => ({
+  listarExistencias: async () =>
+    (await get<ApiExistencia[]>(`${baseUrl}/inventario/existencias`)).map(mapExistencia),
+  ajustarStock: async (sku, delta) =>
+    mapExistencia(
+      await patch<ApiExistencia>(`${baseUrl}/inventario/existencias/${sku}/stock`, { delta }),
+    ),
+  listarMovimientos: async () =>
+    (await get<ApiMovimiento[]>(`${baseUrl}/inventario/movimientos`)).map(mapMovimiento),
+});
+
+// ---- Configuracion ----
+
+interface ApiConfiguracion {
+  id: string;
+  perfil: {
+    iniciales: string;
+    nombre: string;
+    email: string;
+    telefono: string;
+    rol: string;
+  };
+  notificaciones: {
+    nuevo_pedido: boolean;
+    stock_bajo: boolean;
+    vencimiento: boolean;
+    conductor_sin_reporte: boolean;
+    resumen_diario: boolean;
+    sonido: boolean;
+  };
+  sistema: {
+    actualizacion_automatica: boolean;
+    intervalo_actualizacion: string;
+  };
+}
+
+export const mapConfiguracion = (api: ApiConfiguracion): Configuracion => ({
+  id: api.id,
+  perfil: {
+    iniciales: api.perfil.iniciales,
+    nombre: api.perfil.nombre,
+    email: api.perfil.email,
+    telefono: api.perfil.telefono,
+    rol: api.perfil.rol,
+  },
+  notificaciones: {
+    newOrder: api.notificaciones.nuevo_pedido,
+    lowStock: api.notificaciones.stock_bajo,
+    expiry: api.notificaciones.vencimiento,
+    driverDelay: api.notificaciones.conductor_sin_reporte,
+    dailySummary: api.notificaciones.resumen_diario,
+    sound: api.notificaciones.sonido,
+  },
+  sistema: {
+    autoRefresh: api.sistema.actualizacion_automatica,
+    refreshInterval: api.sistema.intervalo_actualizacion,
+  },
+});
+
+export const mapConfiguracionToApi = (patch: PatchConfiguracion): Record<string, unknown> => {
+  const body: Record<string, unknown> = {};
+  if (patch.perfil) {
+    body.perfil = { ...patch.perfil };
+  }
+  if (patch.notificaciones) {
+    const n: Record<string, unknown> = {};
+    if (patch.notificaciones.newOrder !== undefined) n.nuevo_pedido = patch.notificaciones.newOrder;
+    if (patch.notificaciones.lowStock !== undefined) n.stock_bajo = patch.notificaciones.lowStock;
+    if (patch.notificaciones.expiry !== undefined) n.vencimiento = patch.notificaciones.expiry;
+    if (patch.notificaciones.driverDelay !== undefined) n.conductor_sin_reporte = patch.notificaciones.driverDelay;
+    if (patch.notificaciones.dailySummary !== undefined) n.resumen_diario = patch.notificaciones.dailySummary;
+    if (patch.notificaciones.sound !== undefined) n.sonido = patch.notificaciones.sound;
+    body.notificaciones = n;
+  }
+  if (patch.sistema) {
+    const s: Record<string, unknown> = {};
+    if (patch.sistema.autoRefresh !== undefined) s.actualizacion_automatica = patch.sistema.autoRefresh;
+    if (patch.sistema.refreshInterval !== undefined) s.intervalo_actualizacion = patch.sistema.refreshInterval;
+    body.sistema = s;
+  }
+  return body;
+};
+
+export const httpConfiguracionPort = (baseUrl: string = API_BASE): ConfiguracionPort => ({
+  obtener: async () => mapConfiguracion(await get<ApiConfiguracion>(`${baseUrl}/configuracion/`)),
+  actualizar: async (patchData) =>
+    mapConfiguracion(
+      await patch<ApiConfiguracion>(`${baseUrl}/configuracion/`, mapConfiguracionToApi(patchData)),
+    ),
 });

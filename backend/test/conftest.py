@@ -15,24 +15,33 @@ import pytest
 from domain.entities import (
     Alerta,
     Cliente,
+    Configuracion,
     Conductor,
     DatosGrafico,
+    Existencia,
     LineaPedido,
+    MovimientoInventario,
+    Notificaciones,
     Parada,
     Pedido,
+    Perfil,
     Producto,
+    Sistema,
 )
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
+    ConfiguracionRepository,
     ConductorRepository,
     DatosGraficoRepository,
+    ExistenciaRepository,
+    MovimientoRepository,
     ParadaRepository,
     PedidoRepository,
     ProductoRepository,
 )
 from domain.value_objects import EstadoParada, EstadoPedido, TipoAlerta
-from application.services import ClienteService, OperacionService, PedidoService, RutaService
+from application.services import ClienteService, ConfiguracionService, InventarioService, OperacionService, PedidoService, RutaService
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +216,49 @@ class FakeDatosGraficoRepository(DatosGraficoRepository):
         return len(self._store)
 
 
+class FakeExistenciaRepository(ExistenciaRepository):
+    def __init__(self, existencias: list[Existencia] | None = None) -> None:
+        self._store: dict[str, Existencia] = {}
+        for e in (existencias or []):
+            self._store[e.sku] = copy.deepcopy(e)
+
+    async def find_all(self) -> list[Existencia]:
+        return list(self._store.values())
+
+    async def find_by_sku(self, sku: str) -> Existencia | None:
+        return copy.deepcopy(self._store.get(sku))
+
+    async def save(self, existencia: Existencia) -> Existencia:
+        saved = copy.deepcopy(existencia)
+        self._store[saved.sku] = saved
+        return copy.deepcopy(saved)
+
+    async def update(self, existencia: Existencia) -> Existencia:
+        if existencia.sku not in self._store:
+            raise ValueError(f"Existencia {existencia.sku} not found")
+        updated = copy.deepcopy(existencia)
+        self._store[updated.sku] = updated
+        return copy.deepcopy(updated)
+
+    async def count(self) -> int:
+        return len(self._store)
+
+
+class FakeMovimientoRepository(MovimientoRepository):
+    def __init__(self, movimientos: list[MovimientoInventario] | None = None) -> None:
+        self._store: list[MovimientoInventario] = list(movimientos or [])
+
+    async def find_all(self) -> list[MovimientoInventario]:
+        return list(self._store)
+
+    async def save(self, movimiento: MovimientoInventario) -> MovimientoInventario:
+        self._store.append(copy.deepcopy(movimiento))
+        return copy.deepcopy(movimiento)
+
+    async def count(self) -> int:
+        return len(self._store)
+
+
 # ---------------------------------------------------------------------------
 # Seed data helpers
 # ---------------------------------------------------------------------------
@@ -349,3 +401,68 @@ def operacion_service(
     grafico_repo: FakeDatosGraficoRepository,
 ) -> OperacionService:
     return OperacionService(pedido_repo, conductor_repo, alerta_repo, grafico_repo)
+
+
+def make_existencia(sku: str, stock: int = 100) -> Existencia:
+    return Existencia(
+        sku=sku,
+        nombre=f"Producto {sku}",
+        categoria="Leches",
+        stock=stock,
+        max_stock=200,
+        unidad="cajas",
+        precio=28800,
+        dias_vencimiento=18,
+        lote="LOT-TEST",
+    )
+
+
+@pytest.fixture
+def existencia_repo() -> FakeExistenciaRepository:
+    return FakeExistenciaRepository(
+        existencias=[
+            make_existencia("L-ENT-1L", 248),
+            make_existencia("YOG-NAT", 124),
+        ]
+    )
+
+
+@pytest.fixture
+def movimiento_repo() -> FakeMovimientoRepository:
+    return FakeMovimientoRepository(
+        movimientos=[
+            MovimientoInventario(id="MOV-1", tipo="out", titulo="Pedido #4823", cantidad=-12, unidad="cajas", hora="09:42"),
+        ]
+    )
+
+
+@pytest.fixture
+def inventario_service(
+    existencia_repo: FakeExistenciaRepository,
+    movimiento_repo: FakeMovimientoRepository,
+) -> InventarioService:
+    return InventarioService(existencia_repo, movimiento_repo)
+
+
+class FakeConfiguracionRepository(ConfiguracionRepository):
+    def __init__(self, config: Configuracion | None = None) -> None:
+        self._store: Configuracion | None = copy.deepcopy(config) if config else None
+
+    async def get(self) -> Configuracion | None:
+        return copy.deepcopy(self._store)
+
+    async def save(self, config: Configuracion) -> Configuracion:
+        self._store = copy.deepcopy(config)
+        return copy.deepcopy(self._store)
+
+
+@pytest.fixture
+def configuracion_repo() -> FakeConfiguracionRepository:
+    return FakeConfiguracionRepository()
+
+
+@pytest.fixture
+def configuracion_service(
+    configuracion_repo: FakeConfiguracionRepository,
+) -> ConfiguracionService:
+    return ConfiguracionService(configuracion_repo)
