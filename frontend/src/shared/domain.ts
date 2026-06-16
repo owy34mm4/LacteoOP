@@ -99,3 +99,34 @@ export const crearConductor = (data: Conductor): Readonly<Conductor> =>
 
 export const crearAlerta = (data: Alerta): Readonly<Alerta> =>
   Object.freeze({ ...data });
+
+// ---- Configuracion (singleton settings) ----
+
+export interface Perfil {
+  iniciales: string;
+  nombre: string;
+  email: string;
+  telefono: string;
+  rol: string;
+}
+
+export interface Notificaciones {
+  newOrder: boolean;      // nuevo_pedido
+  lowStock: boolean;      // stock_bajo
+  expiry: boolean;        // vencimiento
+  driverDelay: boolean;   // conductor_sin_reporte
+  dailySummary: boolean;  // resumen_diario
+  sound: boolean;         // sonido
+}
+
+export interface Sistema {
+  autoRefresh: boolean;       // actualizacion_automatica
+  refreshInterval: string;    // intervalo_actualizacion ("1"|"3"|"5"|"10")
+}
+
+export interface Configuracion {
+  id: string;
+  perfil: Perfil;
+  notificaciones: Notificaciones;
+  sistema: Sistema;
+}

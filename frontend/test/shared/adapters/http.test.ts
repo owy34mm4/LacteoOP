@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort, httpInventarioPort, mapExistencia, mapMovimiento } from '../../../src/shared/adapters/http';
+import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort, httpInventarioPort, httpConfiguracionPort, mapExistencia, mapMovimiento } from '../../../src/shared/adapters/http';
 
 const BASE = '/api';
 
@@ -584,5 +584,43 @@ describe('InventarioPort — Movimiento mapping', () => {
   it('listarMovimientos rejects when response ok:false', async () => {
     global.fetch = mockFetchFail('Internal Server Error') as unknown as typeof fetch;
     await expect(httpInventarioPort(BASE).listarMovimientos()).rejects.toThrow('Internal Server Error');
+  });
+});
+
+describe('ConfiguracionPort — backend↔domain mapping', () => {
+  const apiConfig = {
+    id: 'app',
+    perfil: { iniciales: 'SR', nombre: 'Sara Restrepo', email: 's@x.co', telefono: '+57 300', rol: 'Asistente' },
+    notificaciones: { nuevo_pedido: true, stock_bajo: false, vencimiento: true, conductor_sin_reporte: false, resumen_diario: true, sonido: false },
+    sistema: { actualizacion_automatica: true, intervalo_actualizacion: '5' },
+  };
+
+  it('obtener GETs /api/configuracion/ and maps snake_case to camelCase domain', async () => {
+    global.fetch = mockFetchOk(apiConfig) as unknown as typeof fetch;
+    const result = await httpConfiguracionPort(BASE).obtener();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/configuracion/`);
+    expect(result.perfil.nombre).toBe('Sara Restrepo');
+    expect(result.notificaciones).toEqual({
+      newOrder: true, lowStock: false, expiry: true, driverDelay: false, dailySummary: true, sound: false,
+    });
+    expect(result.sistema).toEqual({ autoRefresh: true, refreshInterval: '5' });
+  });
+
+  it('actualizar maps a camelCase patch to the snake_case body and PATCHes', async () => {
+    global.fetch = mockFetchOk(apiConfig) as unknown as typeof fetch;
+    await httpConfiguracionPort(BASE).actualizar({ notificaciones: { lowStock: false }, sistema: { autoRefresh: false } });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/configuracion/`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificaciones: { stock_bajo: false }, sistema: { actualizacion_automatica: false } }),
+      }),
+    );
+  });
+
+  it('obtener rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpConfiguracionPort(BASE).obtener()).rejects.toThrow('Not Found');
   });
 });
