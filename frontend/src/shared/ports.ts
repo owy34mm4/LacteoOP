@@ -1,10 +1,26 @@
-import type { Pedido, Parada, Conductor, Alerta } from './domain';
+import type { Pedido, Parada, Conductor, Alerta, Existencia, Movimiento, Configuracion } from './domain';
 
 export interface Cliente {
   id: string;
   name: string;
   city: string;
   addr: string;
+  phone: string;
+}
+
+export interface NuevoCliente {
+  name: string;
+  city: string;
+  addr: string;
+  phone: string;
+}
+
+export interface ClientePort {
+  listar(): Promise<Cliente[]>;
+  obtener(id: string): Promise<Cliente>;
+  crear(input: NuevoCliente): Promise<Cliente>;
+  actualizar(id: string, input: Partial<NuevoCliente>): Promise<Cliente>;
+  eliminar(id: string): Promise<void>;
 }
 
 export interface Producto {
@@ -67,4 +83,44 @@ export interface OperacionPort {
   obtenerGrafico(): Promise<BarData[]>;
   obtenerPedidos(): Promise<Pedido[]>;
   obtenerConductores(): Promise<Conductor[]>;
+}
+
+export interface InventarioPort {
+  listarExistencias(): Promise<Existencia[]>;
+  ajustarStock(sku: string, delta: number): Promise<Existencia>;
+  listarMovimientos(): Promise<Movimiento[]>;
+}
+
+/** Partial patch shapes for PATCH /configuracion/ */
+export interface PatchPerfil {
+  iniciales?: string;
+  nombre?: string;
+  email?: string;
+  telefono?: string;
+  rol?: string;
+}
+
+export interface PatchNotificaciones {
+  newOrder?: boolean;
+  lowStock?: boolean;
+  expiry?: boolean;
+  driverDelay?: boolean;
+  dailySummary?: boolean;
+  sound?: boolean;
+}
+
+export interface PatchSistema {
+  autoRefresh?: boolean;
+  refreshInterval?: string;
+}
+
+export interface PatchConfiguracion {
+  perfil?: PatchPerfil;
+  notificaciones?: PatchNotificaciones;
+  sistema?: PatchSistema;
+}
+
+export interface ConfiguracionPort {
+  obtener(): Promise<Configuracion>;
+  actualizar(patch: PatchConfiguracion): Promise<Configuracion>;
 }

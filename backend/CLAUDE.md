@@ -120,8 +120,11 @@ In `docker-compose.yml` these are injected automatically. For local standalone r
 | Router | Prefix | Domain |
 |--------|--------|--------|
 | `pedido_router` | `/pedidos` | Pedido CRUD |
-| `ruta_router` | `/rutas` | Ruta management |
-| `operacion_router` | `/operaciones` | KPIs + dashboard data |
+| `ruta_router` | `/ruta` | Ruta (paradas + conductores) |
+| `operacion_router` | `/operacion` | KPIs + dashboard data |
+| `cliente_router` | `/clientes` | Cliente CRUD |
+| `inventario_router` | `/inventario` | Existencias + movimientos |
+| `configuracion_router` | `/configuracion` | App settings (singleton) |
 
 Swagger UI available at `/docs`. Health check at `/health`.
 

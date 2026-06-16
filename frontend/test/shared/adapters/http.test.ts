@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort } from '../../../src/shared/adapters/http';
+import { httpPedidoPort, httpParadaPort, httpConductorPort, httpOperacionPort, httpClientePort, httpInventarioPort, httpConfiguracionPort, mapExistencia, mapMovimiento } from '../../../src/shared/adapters/http';
 
 const BASE = '/api';
 
@@ -382,5 +382,245 @@ describe('PedidoPort — listarProductos backend→domain mapping', () => {
     // Spanish fields must NOT leak through
     expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
     expect((result[0] as Record<string, unknown>)['precio']).toBeUndefined();
+  });
+});
+
+describe('ClientePort — backend→domain mapping', () => {
+  const apiCliente = {
+    id: 'C-128',
+    nombre: 'Tienda La Esquina',
+    ciudad: 'Palmira',
+    direccion: 'Cra 28 #14-12',
+    telefono: '+57 312 000 0001',
+  };
+
+  it('listar GETs /api/clientes/ and maps backend shape to domain shape', async () => {
+    global.fetch = mockFetchOk([apiCliente]) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).listar();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/clientes/`);
+    expect(result[0]).toEqual({
+      id: 'C-128',
+      name: 'Tienda La Esquina',
+      city: 'Palmira',
+      addr: 'Cra 28 #14-12',
+      phone: '+57 312 000 0001',
+    });
+    // Spanish fields must NOT leak through
+    expect((result[0] as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result[0] as Record<string, unknown>)['telefono']).toBeUndefined();
+  });
+
+  it('obtener GETs /api/clientes/{id} and maps the shape', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).obtener('C-128');
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/clientes/C-128`);
+    expect(result.phone).toBe('+57 312 000 0001');
+  });
+
+  it('crear POSTs /api/clientes/ with the correct backend body', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    await httpClientePort(BASE).crear({
+      name: 'Tienda La Esquina',
+      city: 'Palmira',
+      addr: 'Cra 28 #14-12',
+      phone: '+57 312 000 0001',
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: 'Tienda La Esquina',
+          ciudad: 'Palmira',
+          direccion: 'Cra 28 #14-12',
+          telefono: '+57 312 000 0001',
+        }),
+      }),
+    );
+  });
+
+  it('crear returns a mapped domain Cliente including phone', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    const result = await httpClientePort(BASE).crear({ name: 'X', city: 'Y', addr: 'Z', phone: '+57 300 000 0000' });
+    expect(result.phone).toBe('+57 312 000 0001');
+    expect((result as Record<string, unknown>)['telefono']).toBeUndefined();
+  });
+
+  it('actualizar PATCHes /api/clientes/{id} with mapped body', async () => {
+    global.fetch = mockFetchOk(apiCliente) as unknown as typeof fetch;
+    await httpClientePort(BASE).actualizar('C-128', { name: 'Nuevo Nombre', phone: '+57 315 999 0000' });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/C-128`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: 'Nuevo Nombre', telefono: '+57 315 999 0000' }),
+      }),
+    );
+  });
+
+  it('eliminar DELETEs /api/clientes/{id} with no body', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
+    await httpClientePort(BASE).eliminar('C-128');
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/clientes/C-128`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('eliminar rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpClientePort(BASE).eliminar('NOPE')).rejects.toThrow('Not Found');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// InventarioPort — mapping + routing
+// ---------------------------------------------------------------------------
+
+describe('InventarioPort — backend→domain mapping', () => {
+  const apiExistencia = {
+    sku: 'L-ENT-1L',
+    nombre: 'Leche entera 1 L',
+    categoria: 'Leches',
+    stock: 248,
+    max_stock: 400,
+    unidad: 'cajas',
+    precio: 28800,
+    dias_vencimiento: 18,
+    lote: 'LOT-5234',
+  };
+
+  it('mapExistencia maps all Spanish snake_case fields to English domain shape', () => {
+    const result = mapExistencia(apiExistencia);
+    expect(result).toEqual({
+      sku: 'L-ENT-1L',
+      name: 'Leche entera 1 L',
+      cat: 'Leches',
+      stock: 248,
+      max: 400,
+      unit: 'cajas',
+      price: 28800,
+      expiry: 18,
+      lot: 'LOT-5234',
+    });
+    // Spanish fields must NOT leak through
+    expect((result as Record<string, unknown>)['nombre']).toBeUndefined();
+    expect((result as Record<string, unknown>)['categoria']).toBeUndefined();
+    expect((result as Record<string, unknown>)['max_stock']).toBeUndefined();
+    expect((result as Record<string, unknown>)['unidad']).toBeUndefined();
+    expect((result as Record<string, unknown>)['precio']).toBeUndefined();
+    expect((result as Record<string, unknown>)['dias_vencimiento']).toBeUndefined();
+    expect((result as Record<string, unknown>)['lote']).toBeUndefined();
+  });
+
+  it('listarExistencias GETs /api/inventario/existencias and maps each item', async () => {
+    global.fetch = mockFetchOk([apiExistencia]) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).listarExistencias();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/inventario/existencias`);
+    expect(result[0].name).toBe('Leche entera 1 L');
+    expect(result[0].max).toBe(400);
+    expect(result[0].expiry).toBe(18);
+  });
+
+  it('ajustarStock PATCHes /api/inventario/existencias/{sku}/stock with delta body', async () => {
+    global.fetch = mockFetchOk(apiExistencia) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).ajustarStock('L-ENT-1L', -10);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/inventario/existencias/L-ENT-1L/stock`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delta: -10 }),
+      }),
+    );
+    expect(result.sku).toBe('L-ENT-1L');
+  });
+
+  it('ajustarStock rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpInventarioPort(BASE).ajustarStock('NOPE', -10)).rejects.toThrow('Not Found');
+  });
+});
+
+describe('InventarioPort — Movimiento mapping', () => {
+  const apiMovimiento = {
+    id: 'MOV-1',
+    tipo: 'out',
+    titulo: 'Pedido #4823 · Panaderia',
+    cantidad: -12,
+    unidad: 'cajas',
+    hora: '09:42',
+  };
+
+  it('mapMovimiento maps all Spanish fields to English domain shape', () => {
+    const result = mapMovimiento(apiMovimiento);
+    expect(result).toEqual({
+      id: 'MOV-1',
+      type: 'out',
+      title: 'Pedido #4823 · Panaderia',
+      qty: -12,
+      unit: 'cajas',
+      time: '09:42',
+    });
+    // Spanish fields must NOT leak through
+    expect((result as Record<string, unknown>)['tipo']).toBeUndefined();
+    expect((result as Record<string, unknown>)['titulo']).toBeUndefined();
+    expect((result as Record<string, unknown>)['cantidad']).toBeUndefined();
+    expect((result as Record<string, unknown>)['hora']).toBeUndefined();
+  });
+
+  it('listarMovimientos GETs /api/inventario/movimientos and maps each item', async () => {
+    global.fetch = mockFetchOk([apiMovimiento]) as unknown as typeof fetch;
+    const result = await httpInventarioPort(BASE).listarMovimientos();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/inventario/movimientos`);
+    expect(result[0].type).toBe('out');
+    expect(result[0].title).toBe('Pedido #4823 · Panaderia');
+    expect(result[0].qty).toBe(-12);
+    expect(result[0].time).toBe('09:42');
+  });
+
+  it('listarMovimientos rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Internal Server Error') as unknown as typeof fetch;
+    await expect(httpInventarioPort(BASE).listarMovimientos()).rejects.toThrow('Internal Server Error');
+  });
+});
+
+describe('ConfiguracionPort — backend↔domain mapping', () => {
+  const apiConfig = {
+    id: 'app',
+    perfil: { iniciales: 'SR', nombre: 'Sara Restrepo', email: 's@x.co', telefono: '+57 300', rol: 'Asistente' },
+    notificaciones: { nuevo_pedido: true, stock_bajo: false, vencimiento: true, conductor_sin_reporte: false, resumen_diario: true, sonido: false },
+    sistema: { actualizacion_automatica: true, intervalo_actualizacion: '5' },
+  };
+
+  it('obtener GETs /api/configuracion/ and maps snake_case to camelCase domain', async () => {
+    global.fetch = mockFetchOk(apiConfig) as unknown as typeof fetch;
+    const result = await httpConfiguracionPort(BASE).obtener();
+    expect(global.fetch).toHaveBeenCalledWith(`${BASE}/configuracion/`);
+    expect(result.perfil.nombre).toBe('Sara Restrepo');
+    expect(result.notificaciones).toEqual({
+      newOrder: true, lowStock: false, expiry: true, driverDelay: false, dailySummary: true, sound: false,
+    });
+    expect(result.sistema).toEqual({ autoRefresh: true, refreshInterval: '5' });
+  });
+
+  it('actualizar maps a camelCase patch to the snake_case body and PATCHes', async () => {
+    global.fetch = mockFetchOk(apiConfig) as unknown as typeof fetch;
+    await httpConfiguracionPort(BASE).actualizar({ notificaciones: { lowStock: false }, sistema: { autoRefresh: false } });
+    expect(global.fetch).toHaveBeenCalledWith(
+      `${BASE}/configuracion/`,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificaciones: { stock_bajo: false }, sistema: { actualizacion_automatica: false } }),
+      }),
+    );
+  });
+
+  it('obtener rejects when response ok:false', async () => {
+    global.fetch = mockFetchFail('Not Found') as unknown as typeof fetch;
+    await expect(httpConfiguracionPort(BASE).obtener()).rejects.toThrow('Not Found');
   });
 });

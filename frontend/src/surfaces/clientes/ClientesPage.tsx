@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { httpPedidoPort } from '../../shared/adapters/http';
+import { httpClientePort } from '../../shared/adapters/http';
 import type { Cliente } from '../../shared/ports';
-import { LIconUsers, LIconSearch, LIconPlus, LIconEye } from '../../components/Icons';
+import { LIconUsers, LIconSearch, LIconPlus, LIconEye, LIconTrash } from '../../components/Icons';
 import { DataConsentModal } from '../../components/DataConsentModal';
 import { ProtectedDataLabel } from '../../components/ProtectedDataLabel';
 import '../../styles/clientes.css';
@@ -13,7 +13,6 @@ const SAMPLE_ORDERS = [
   { id: '4745', date: '17 may · 08:50', amount: '$ 312.000', state: 'entregado' },
 ];
 
-// mock — no backend yet for client consent status; comes from backend in a future phase
 type ConsentStatus = 'ok' | 'pending' | 'revoked';
 const CONSENT_MAP: Record<string, ConsentStatus> = {
   'C-128': 'ok', 'C-201': 'ok', 'C-342': 'pending', 'C-415': 'ok',
@@ -38,7 +37,73 @@ function ConsentBadge({ status }: { status: ConsentStatus }) {
   return <span className={`consent-badge ${status}`}>{CONSENT_LABEL[status]}</span>;
 }
 
-function ClientDetail({ client, onOpenConsent }: { client: Cliente | null; onOpenConsent: () => void }) {
+interface ClienteFormState {
+  nombre: string;
+  ciudad: string;
+  direccion: string;
+  telefono: string;
+}
+
+function ClienteForm({
+  initial,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  initial?: ClienteFormState;
+  onSave: (data: ClienteFormState) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const [form, setForm] = useState<ClienteFormState>(
+    initial ?? { nombre: '', ciudad: '', direccion: '', telefono: '' },
+  );
+
+  const set = (k: keyof ClienteFormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 16, border: '1px solid var(--border-1)', borderRadius: 8, background: 'var(--surface-1)' }}>
+      <div style={{ fontWeight: 700, fontSize: 13 }}>{initial ? 'Editar cliente' : 'Nuevo cliente'}</div>
+      <label style={{ fontSize: 12 }}>
+        Nombre <ProtectedDataLabel />
+        <input className="lo-input" value={form.nombre} onChange={set('nombre')} placeholder="Nombre del cliente" style={{ marginTop: 4 }} />
+      </label>
+      <label style={{ fontSize: 12 }}>
+        Ciudad
+        <input className="lo-input" value={form.ciudad} onChange={set('ciudad')} placeholder="Ciudad" style={{ marginTop: 4 }} />
+      </label>
+      <label style={{ fontSize: 12 }}>
+        Direccion <ProtectedDataLabel />
+        <input className="lo-input" value={form.direccion} onChange={set('direccion')} placeholder="Direccion" style={{ marginTop: 4 }} />
+      </label>
+      <label style={{ fontSize: 12 }}>
+        Telefono <ProtectedDataLabel />
+        <input className="lo-input" value={form.telefono} onChange={set('telefono')} placeholder="+57 300 000 0000" style={{ marginTop: 4 }} />
+      </label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="lo-btn lo-btn-primary lo-btn-sm" onClick={() => onSave(form)} disabled={saving || !form.nombre.trim()}>
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+        <button className="lo-btn lo-btn-ghost lo-btn-sm" onClick={onCancel} disabled={saving}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ClientDetail({
+  client,
+  onOpenConsent,
+  onEdit,
+  onDelete,
+}: {
+  client: Cliente | null;
+  onOpenConsent: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   if (!client) return (
     <div className="cli-detail" style={{ alignItems: 'center', justifyContent: 'center', color: 'var(--fg-3)', minHeight: 300 }}>
       <LIconUsers size={32} />
@@ -57,16 +122,29 @@ function ClientDetail({ client, onOpenConsent }: { client: Cliente | null; onOpe
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <ConsentBadge status={consent} />
         <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>Ley 1581 de 2012</span>
-        {/* no backend yet for consent update — opens local consent modal */}
         <button className="lo-btn lo-btn-ghost lo-btn-sm" onClick={onOpenConsent} style={{ marginLeft: 'auto' }}>
           <LIconEye size={13} />Ver consentimiento
+        </button>
+        <button className="lo-btn lo-btn-ghost lo-btn-sm" onClick={onEdit}>
+          Editar
+        </button>
+        <button className="lo-btn lo-btn-ghost lo-btn-sm" onClick={onDelete} style={{ color: 'var(--danger)' }}>
+          <LIconTrash size={13} />Eliminar
         </button>
       </div>
 
       <div>
+        <div className="cli-info-row">
+          <span className="l">Nombre <ProtectedDataLabel /></span>
+          <span className="r">{client.name}</span>
+        </div>
+        <div className="cli-info-row">
+          <span className="l">Telefono <ProtectedDataLabel /></span>
+          <span className="r">{client.phone || '—'}</span>
+        </div>
         <div className="cli-info-row">
           <span className="l">Direccion <ProtectedDataLabel /></span>
           <span className="r">{client.addr}</span>
@@ -97,6 +175,8 @@ function ClientDetail({ client, onOpenConsent }: { client: Cliente | null; onOpe
   );
 }
 
+const port = httpClientePort();
+
 const ClientesPage: React.FC = () => {
   const [clients, setClients] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,14 +184,19 @@ const ClientesPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Cliente | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
-    httpPedidoPort().listarClientes()
+    port.listar()
       .then(setClients)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(load, []);
 
   const visible = clients.filter(c =>
     !query ||
@@ -120,15 +205,62 @@ const ClientesPage: React.FC = () => {
   );
   const selected = clients.find(c => c.id === selectedId) ?? null;
 
+  const handleCreate = async (data: { nombre: string; ciudad: string; direccion: string; telefono: string }) => {
+    setSaving(true);
+    try {
+      const created = await port.crear({ name: data.nombre, city: data.ciudad, addr: data.direccion, phone: data.telefono });
+      setClients(prev => [...prev, created]);
+      setShowForm(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async (data: { nombre: string; ciudad: string; direccion: string; telefono: string }) => {
+    if (!editingClient) return;
+    setSaving(true);
+    try {
+      const updated = await port.actualizar(editingClient.id, { name: data.nombre, city: data.ciudad, addr: data.direccion, phone: data.telefono });
+      setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+      setEditingClient(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Esta accion eliminara todos los datos personales de este cliente (Ley 1581). ¿Continuar?')) return;
+    try {
+      await port.eliminar(id);
+      setClients(prev => prev.filter(c => c.id !== id));
+      if (selectedId === id) setSelectedId(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   return (
     <div className="lo-content">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ margin: 0 }}>Clientes</h2>
-        {/* no backend yet for create client — local state only */}
-        <button className="lo-btn lo-btn-primary lo-btn-sm" disabled title="Crear cliente — sin backend por ahora">
+        <button className="lo-btn lo-btn-primary lo-btn-sm" onClick={() => { setShowForm(true); setEditingClient(null); }}>
           <LIconPlus size={14} />Nuevo cliente
         </button>
       </div>
+
+      {(showForm && !editingClient) && (
+        <div style={{ marginBottom: 16 }}>
+          <ClienteForm
+            onSave={handleCreate}
+            onCancel={() => setShowForm(false)}
+            saving={saving}
+          />
+        </div>
+      )}
 
       <div className="cli-toolbar" style={{ marginBottom: 16 }}>
         <div className="lo-search">
@@ -162,7 +294,7 @@ const ClientesPage: React.FC = () => {
                   return (
                     <tr key={c.id}
                         style={{ cursor: 'pointer', background: selectedId === c.id ? 'var(--green-50)' : undefined }}
-                        onClick={() => setSelectedId(c.id)}>
+                        onClick={() => { setSelectedId(c.id); setEditingClient(null); }}>
                       <td className="strong">{c.name}</td>
                       <td className="num" style={{ fontSize: 11, color: 'var(--fg-3)' }}>{c.id}</td>
                       <td>{c.city}</td>
@@ -179,7 +311,23 @@ const ClientesPage: React.FC = () => {
             </table>
           </div>
 
-          <ClientDetail client={selected} onOpenConsent={() => setConsentOpen(true)} />
+          {editingClient ? (
+            <div className="cli-detail">
+              <ClienteForm
+                initial={{ nombre: editingClient.name, ciudad: editingClient.city, direccion: editingClient.addr, telefono: editingClient.phone }}
+                onSave={handleUpdate}
+                onCancel={() => setEditingClient(null)}
+                saving={saving}
+              />
+            </div>
+          ) : (
+            <ClientDetail
+              client={selected}
+              onOpenConsent={() => setConsentOpen(true)}
+              onEdit={() => setEditingClient(selected)}
+              onDelete={() => selected && handleDelete(selected.id)}
+            />
+          )}
         </div>
       )}
 
