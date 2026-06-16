@@ -1,5 +1,7 @@
-name: main
+name: deploy-main
 
+# On merge to main (or a vX.Y.Z tag): run tests, then build + push the DISTROLESS
+# backend image (and the frontend) to DockerHub.
 on:
   push:
     branches: [main]
@@ -11,7 +13,8 @@ jobs:
 
   build-push:
     needs: tests
-    uses: ./.github/workflows/ci-build-push.yml
+    uses: ./.github/workflows/ci-build.yml
     with:
+      push: true
       backend_dockerfile: ./backend/Dockerfile.prod
     secrets: inherit

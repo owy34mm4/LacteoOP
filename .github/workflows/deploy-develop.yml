@@ -1,0 +1,18 @@
+name: deploy-develop
+
+# On merge to develop: run tests, then build + push the SINGLE-STAGE backend image
+# (and the frontend) to DockerHub.
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci-tests.yml
+
+  build-push:
+    needs: tests
+    uses: ./.github/workflows/ci-build.yml
+    with:
+      push: true
+    secrets: inherit
