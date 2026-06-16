@@ -3,18 +3,23 @@ from __future__ import annotations
 from domain.entities import (
     Alerta,
     Cliente,
+    Configuracion,
     Conductor,
     DatosGrafico,
     Existencia,
     LineaPedido,
     MovimientoInventario,
+    Notificaciones,
     Parada,
     Pedido,
+    Perfil,
     Producto,
+    Sistema,
 )
 from infrastructure.adapters.outbound.mongo.documents import (
     AlertaDocument,
     ClienteDocument,
+    ConfiguracionDocument,
     ConductorDocument,
     DatosGraficoDocument,
     ExistenciaDocument,
@@ -262,4 +267,44 @@ class MovimientoInventarioMapper:
             cantidad=entity.cantidad,
             unidad=entity.unidad,
             hora=entity.hora,
+        )
+
+
+class ConfiguracionMapper:
+    @staticmethod
+    def to_entity(doc: ConfiguracionDocument) -> Configuracion:
+        p = doc.perfil
+        n = doc.notificaciones
+        s = doc.sistema
+        return Configuracion(
+            id=doc.config_id,
+            perfil=Perfil(
+                iniciales=p.get("iniciales", ""),
+                nombre=p.get("nombre", ""),
+                email=p.get("email", ""),
+                telefono=p.get("telefono", ""),
+                rol=p.get("rol", ""),
+            ),
+            notificaciones=Notificaciones(
+                nuevo_pedido=n.get("nuevo_pedido", True),
+                stock_bajo=n.get("stock_bajo", True),
+                vencimiento=n.get("vencimiento", True),
+                conductor_sin_reporte=n.get("conductor_sin_reporte", False),
+                resumen_diario=n.get("resumen_diario", True),
+                sonido=n.get("sonido", False),
+            ),
+            sistema=Sistema(
+                actualizacion_automatica=s.get("actualizacion_automatica", True),
+                intervalo_actualizacion=s.get("intervalo_actualizacion", "5"),
+            ),
+        )
+
+    @staticmethod
+    def to_document(entity: Configuracion) -> ConfiguracionDocument:
+        import dataclasses
+        return ConfiguracionDocument(
+            config_id=entity.id,
+            perfil=dataclasses.asdict(entity.perfil),
+            notificaciones=dataclasses.asdict(entity.notificaciones),
+            sistema=dataclasses.asdict(entity.sistema),
         )

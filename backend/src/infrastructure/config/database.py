@@ -6,6 +6,7 @@ from beanie import init_beanie
 from infrastructure.adapters.outbound.mongo.documents import (
     AlertaDocument,
     ClienteDocument,
+    ConfiguracionDocument,
     ConductorDocument,
     DatosGraficoDocument,
     ExistenciaDocument,
@@ -35,6 +36,7 @@ async def init_database(settings: Settings) -> None:
             DatosGraficoDocument,
             ExistenciaDocument,
             MovimientoInventarioDocument,
+            ConfiguracionDocument,
         ],
     )
 

@@ -30,6 +30,7 @@ from domain.value_objects import EstadoPedido  # noqa: E402
 from infrastructure.adapters.outbound.mongo.documents import (  # noqa: E402
     AlertaDocument,
     ClienteDocument,
+    ConfiguracionDocument,
     ConductorDocument,
     DatosGraficoDocument,
     ExistenciaDocument,
@@ -38,9 +39,10 @@ from infrastructure.adapters.outbound.mongo.documents import (  # noqa: E402
     PedidoDocument,
     ProductoDocument,
 )
-from domain.entities import Cliente, Existencia, MovimientoInventario  # noqa: E402
+from domain.entities import Cliente, Configuracion, Existencia, MovimientoInventario, Notificaciones, Perfil, Sistema  # noqa: E402
 from infrastructure.adapters.outbound.mongo.repositories import (  # noqa: E402
     MongoClienteRepository,
+    MongoConfiguracionRepository,
     MongoExistenciaRepository,
     MongoMovimientoRepository,
     MongoPedidoRepository,
@@ -59,6 +61,7 @@ ALL_DOCUMENT_MODELS = [
     DatosGraficoDocument,
     ExistenciaDocument,
     MovimientoInventarioDocument,
+    ConfiguracionDocument,
 ]
 
 
@@ -352,3 +355,86 @@ async def test_movimiento_count(mongo_db):
     await repo.save(make_test_movimiento("MOV-C1"))
     await repo.save(make_test_movimiento("MOV-C2"))
     assert await repo.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# MongoConfiguracionRepository integration tests
+# ---------------------------------------------------------------------------
+
+def make_test_configuracion() -> Configuracion:
+    return Configuracion(
+        id="app",
+        perfil=Perfil(
+            iniciales="SR",
+            nombre="Sara Restrepo Guzman",
+            email="sara.restrepo@lacteosv.co",
+            telefono="+57 316 882 4400",
+            rol="Asistente de pedidos",
+        ),
+        notificaciones=Notificaciones(
+            nuevo_pedido=True,
+            stock_bajo=True,
+            vencimiento=True,
+            conductor_sin_reporte=False,
+            resumen_diario=True,
+            sonido=False,
+        ),
+        sistema=Sistema(
+            actualizacion_automatica=True,
+            intervalo_actualizacion="5",
+        ),
+    )
+
+
+@pytest.mark.integration
+async def test_configuracion_get_returns_none_when_empty(mongo_db):
+    """get() returns None when no document exists."""
+    repo = MongoConfiguracionRepository()
+    result = await repo.get()
+    assert result is None
+
+
+@pytest.mark.integration
+async def test_configuracion_save_and_get_round_trip(mongo_db):
+    """save→get round-trip preserves all nested fields."""
+    repo = MongoConfiguracionRepository()
+    config = make_test_configuracion()
+
+    saved = await repo.save(config)
+    assert saved.id == "app"
+    assert saved.perfil.nombre == "Sara Restrepo Guzman"
+    assert saved.perfil.iniciales == "SR"
+    assert saved.notificaciones.nuevo_pedido is True
+    assert saved.notificaciones.sonido is False
+    assert saved.sistema.intervalo_actualizacion == "5"
+    assert saved.sistema.actualizacion_automatica is True
+
+    fetched = await repo.get()
+    assert fetched is not None
+    assert fetched.perfil.email == "sara.restrepo@lacteosv.co"
+    assert fetched.notificaciones.conductor_sin_reporte is False
+    assert fetched.sistema.actualizacion_automatica is True
+
+
+@pytest.mark.integration
+async def test_configuracion_save_updates_existing(mongo_db):
+    """Second save() updates the singleton in-place (no duplicate documents)."""
+    import dataclasses
+    repo = MongoConfiguracionRepository()
+    await repo.save(make_test_configuracion())
+
+    config = await repo.get()
+    assert config is not None
+    updated = dataclasses.replace(
+        config,
+        notificaciones=dataclasses.replace(config.notificaciones, sonido=True),
+    )
+    await repo.save(updated)
+
+    # Must still be a single document
+    fetched = await repo.get()
+    assert fetched is not None
+    assert fetched.notificaciones.sonido is True
+    # Other fields untouched
+    assert fetched.perfil.nombre == "Sara Restrepo Guzman"
+    assert fetched.notificaciones.nuevo_pedido is True

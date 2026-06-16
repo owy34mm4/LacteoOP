@@ -105,3 +105,38 @@ class MovimientoInventario:
     cantidad: int
     unidad: str
     hora: str
+
+
+# ---- Configuracion (singleton settings, id always "app") ----
+
+@dataclass
+class Perfil:
+    iniciales: str
+    nombre: str
+    email: str
+    telefono: str
+    rol: str
+
+
+@dataclass
+class Notificaciones:
+    nuevo_pedido: bool
+    stock_bajo: bool
+    vencimiento: bool
+    conductor_sin_reporte: bool
+    resumen_diario: bool
+    sonido: bool
+
+
+@dataclass
+class Sistema:
+    actualizacion_automatica: bool
+    intervalo_actualizacion: str   # "1" | "3" | "5" | "10" (minutes)
+
+
+@dataclass
+class Configuracion:
+    id: str
+    perfil: Perfil
+    notificaciones: Notificaciones
+    sistema: Sistema

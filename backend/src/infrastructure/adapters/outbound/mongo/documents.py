@@ -125,3 +125,15 @@ class MovimientoInventarioDocument(Document):
 
     class Settings:
         name = "movimientos_inventario"
+
+
+class ConfiguracionDocument(Document):
+    # id field stores "app" — the singleton key
+    config_id: str = "app"
+    # Nested config stored as plain dicts for flexibility
+    perfil: dict = Field(default_factory=dict)
+    notificaciones: dict = Field(default_factory=dict)
+    sistema: dict = Field(default_factory=dict)
+
+    class Settings:
+        name = "configuracion"
