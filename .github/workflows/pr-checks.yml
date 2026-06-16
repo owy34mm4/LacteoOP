@@ -1,0 +1,18 @@
+name: PR checks
+
+# The single PR gate for develop and main. Runs on PR open/update (not on merge).
+# Tests + image BUILD (no push). The backend image matches the PR's target branch:
+# a PR into main validates the distroless image, a PR into develop the single-stage one.
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci-tests.yml
+
+  build:
+    uses: ./.github/workflows/ci-build.yml
+    with:
+      push: false
+      backend_dockerfile: ${{ github.base_ref == 'main' && './backend/Dockerfile.prod' || './backend/Dockerfile' }}
