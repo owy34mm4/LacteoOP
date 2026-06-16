@@ -15,18 +15,23 @@ import pytest
 from domain.entities import (
     Alerta,
     Cliente,
+    Configuracion,
     Conductor,
     DatosGrafico,
     Existencia,
     LineaPedido,
     MovimientoInventario,
+    Notificaciones,
     Parada,
     Pedido,
+    Perfil,
     Producto,
+    Sistema,
 )
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
+    ConfiguracionRepository,
     ConductorRepository,
     DatosGraficoRepository,
     ExistenciaRepository,
@@ -36,7 +41,7 @@ from domain.ports.outbound import (
     ProductoRepository,
 )
 from domain.value_objects import EstadoParada, EstadoPedido, TipoAlerta
-from application.services import ClienteService, InventarioService, OperacionService, PedidoService, RutaService
+from application.services import ClienteService, ConfiguracionService, InventarioService, OperacionService, PedidoService, RutaService
 
 
 # ---------------------------------------------------------------------------
@@ -437,3 +442,27 @@ def inventario_service(
     movimiento_repo: FakeMovimientoRepository,
 ) -> InventarioService:
     return InventarioService(existencia_repo, movimiento_repo)
+
+
+class FakeConfiguracionRepository(ConfiguracionRepository):
+    def __init__(self, config: Configuracion | None = None) -> None:
+        self._store: Configuracion | None = copy.deepcopy(config) if config else None
+
+    async def get(self) -> Configuracion | None:
+        return copy.deepcopy(self._store)
+
+    async def save(self, config: Configuracion) -> Configuracion:
+        self._store = copy.deepcopy(config)
+        return copy.deepcopy(self._store)
+
+
+@pytest.fixture
+def configuracion_repo() -> FakeConfiguracionRepository:
+    return FakeConfiguracionRepository()
+
+
+@pytest.fixture
+def configuracion_service(
+    configuracion_repo: FakeConfiguracionRepository,
+) -> ConfiguracionService:
+    return ConfiguracionService(configuracion_repo)

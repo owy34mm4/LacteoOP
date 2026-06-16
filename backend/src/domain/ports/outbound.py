@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
+from domain.entities import Alerta, Cliente, Configuracion, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
 from domain.value_objects import EstadoPedido
 
 
@@ -142,3 +142,11 @@ class MovimientoRepository(ABC):
 
     @abstractmethod
     async def count(self) -> int: ...
+
+
+class ConfiguracionRepository(ABC):
+    @abstractmethod
+    async def get(self) -> Configuracion | None: ...
+
+    @abstractmethod
+    async def save(self, config: Configuracion) -> Configuracion: ...

@@ -3,11 +3,12 @@ from __future__ import annotations
 import dataclasses
 from datetime import datetime
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, LineaPedido, MovimientoInventario, Parada, Pedido, Producto
-from domain.ports.inbound import ClienteServicePort, InventarioServicePort, OperacionServicePort, PedidoServicePort, RutaServicePort
+from domain.entities import Alerta, Cliente, Configuracion, Conductor, DatosGrafico, Existencia, LineaPedido, MovimientoInventario, Notificaciones, Parada, Pedido, Perfil, Producto, Sistema
+from domain.ports.inbound import ClienteServicePort, ConfiguracionServicePort, InventarioServicePort, OperacionServicePort, PedidoServicePort, RutaServicePort
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
+    ConfiguracionRepository,
     ConductorRepository,
     DatosGraficoRepository,
     ExistenciaRepository,
@@ -255,3 +256,70 @@ class InventarioService(InventarioServicePort):
 
     async def listar_movimientos(self) -> list[MovimientoInventario]:
         return await self._movimiento_repo.find_all()
+
+
+# ---- Default singleton ----
+
+DEFAULT_CONFIGURACION = Configuracion(
+    id="app",
+    perfil=Perfil(
+        iniciales="SR",
+        nombre="Sara Restrepo Guzman",
+        email="sara.restrepo@lacteosv.co",
+        telefono="+57 316 882 4400",
+        rol="Asistente de pedidos",
+    ),
+    notificaciones=Notificaciones(
+        nuevo_pedido=True,
+        stock_bajo=True,
+        vencimiento=True,
+        conductor_sin_reporte=False,
+        resumen_diario=True,
+        sonido=False,
+    ),
+    sistema=Sistema(
+        actualizacion_automatica=True,
+        intervalo_actualizacion="5",
+    ),
+)
+
+
+class ConfiguracionService(ConfiguracionServicePort):
+    def __init__(self, config_repo: ConfiguracionRepository) -> None:
+        self._config_repo = config_repo
+
+    async def obtener(self) -> Configuracion:
+        config = await self._config_repo.get()
+        if config is None:
+            saved = await self._config_repo.save(DEFAULT_CONFIGURACION)
+            return saved
+        return config
+
+    async def actualizar(self, patch: dict) -> Configuracion:
+        config = await self.obtener()
+
+        # Deep-merge perfil
+        perfil_patch = patch.get("perfil", {})
+        if perfil_patch:
+            config = dataclasses.replace(
+                config,
+                perfil=dataclasses.replace(config.perfil, **perfil_patch),
+            )
+
+        # Deep-merge notificaciones
+        notif_patch = patch.get("notificaciones", {})
+        if notif_patch:
+            config = dataclasses.replace(
+                config,
+                notificaciones=dataclasses.replace(config.notificaciones, **notif_patch),
+            )
+
+        # Deep-merge sistema
+        sistema_patch = patch.get("sistema", {})
+        if sistema_patch:
+            config = dataclasses.replace(
+                config,
+                sistema=dataclasses.replace(config.sistema, **sistema_patch),
+            )
+
+        return await self._config_repo.save(config)

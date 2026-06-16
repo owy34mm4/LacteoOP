@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
+from domain.entities import Alerta, Cliente, Configuracion, Conductor, DatosGrafico, Existencia, MovimientoInventario, Parada, Pedido, Producto
 from domain.ports.outbound import (
     AlertaRepository,
     ClienteRepository,
+    ConfiguracionRepository,
     ConductorRepository,
     DatosGraficoRepository,
     ExistenciaRepository,
@@ -16,6 +17,7 @@ from domain.value_objects import EstadoPedido
 from infrastructure.adapters.outbound.mongo.documents import (
     AlertaDocument,
     ClienteDocument,
+    ConfiguracionDocument,
     ConductorDocument,
     DatosGraficoDocument,
     ExistenciaDocument,
@@ -27,6 +29,7 @@ from infrastructure.adapters.outbound.mongo.documents import (
 from infrastructure.adapters.outbound.mongo.mappers import (
     AlertaMapper,
     ClienteMapper,
+    ConfiguracionMapper,
     ConductorMapper,
     DatosGraficoMapper,
     ExistenciaMapper,
@@ -259,3 +262,26 @@ class MongoMovimientoRepository(MovimientoRepository):
 
     async def count(self) -> int:
         return await MovimientoInventarioDocument.count()
+
+
+class MongoConfiguracionRepository(ConfiguracionRepository):
+    async def get(self) -> Configuracion | None:
+        doc = await ConfiguracionDocument.find_one(
+            ConfiguracionDocument.config_id == "app"
+        )
+        return ConfiguracionMapper.to_entity(doc) if doc else None
+
+    async def save(self, config: Configuracion) -> Configuracion:
+        doc = await ConfiguracionDocument.find_one(
+            ConfiguracionDocument.config_id == "app"
+        )
+        if doc is None:
+            doc = ConfiguracionMapper.to_document(config)
+            await doc.insert()
+        else:
+            import dataclasses
+            doc.perfil = dataclasses.asdict(config.perfil)
+            doc.notificaciones = dataclasses.asdict(config.notificaciones)
+            doc.sistema = dataclasses.asdict(config.sistema)
+            await doc.save()
+        return ConfiguracionMapper.to_entity(doc)

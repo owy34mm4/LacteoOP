@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from domain.entities import Alerta, Cliente, Conductor, DatosGrafico, Existencia, LineaPedido, MovimientoInventario, Parada, Pedido, Producto
+from domain.entities import Alerta, Cliente, Configuracion, Conductor, DatosGrafico, Existencia, LineaPedido, MovimientoInventario, Parada, Pedido, Producto
 from domain.value_objects import EstadoPedido
 
 
@@ -90,3 +90,11 @@ class InventarioServicePort(ABC):
 
     @abstractmethod
     async def listar_movimientos(self) -> list[MovimientoInventario]: ...
+
+
+class ConfiguracionServicePort(ABC):
+    @abstractmethod
+    async def obtener(self) -> Configuracion: ...
+
+    @abstractmethod
+    async def actualizar(self, patch: dict) -> Configuracion: ...
